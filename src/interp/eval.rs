@@ -2206,10 +2206,10 @@ impl Interp {
                 Ok(Value::Undef)
             }
             Expr::FileTest(op, f) => {
-                let m = match io::file_target(self, f, scope)? {
+                let (m, is_pipe) = match io::file_target(self, f, scope)? {
                     io::Target::Last => {
                         if self.last_stat.is_empty() {
-                            Err(std::io::Error::other("no stat"))
+                            (Err(std::io::Error::other("no stat")), false)
                         } else {
                             // Re-read through the mode and size of the last stat.
                             let mode = self.last_stat[2].to_i64();
@@ -2227,9 +2227,9 @@ impl Interp {
                         }
                     }
                     // (-l looks at the link itself)
-                    io::Target::Path(p) if *op == b'l' => std::fs::symlink_metadata(&p),
-                    io::Target::Path(p) => std::fs::metadata(&p),
-                    io::Target::Meta(m) => m,
+                    io::Target::Path(p) if *op == b'l' => (std::fs::symlink_metadata(&p), false),
+                    io::Target::Path(p) => (std::fs::metadata(&p), false),
+                    io::Target::Meta(m, is_pipe) => (m, is_pipe),
                 };
                 if let Ok(md) = &m {
                     self.last_stat = io::stat_list(md);
@@ -2244,6 +2244,7 @@ impl Interp {
                         _ => Value::Undef,
                     },
                     b'z' => boolean(m.map(|m| m.len() == 0).unwrap_or(false)),
+                    b'p' if is_pipe => YES(),
                     b'p' => {
                         #[cfg(unix)]
                         {

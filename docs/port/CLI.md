@@ -39,6 +39,13 @@ makes the CLI judge run it.
 | `options.rs` | the option chain of the argument loop (691-1451): `parse_option` |
 | `program.rs` | the rest of the main program: the BEGIN block and module loading (1-83), the lexicals' initial values (84-328), the command loop (400-690), the end of the argument loop and the processing of the command (1452-2110), as `main::<program>` |
 
+### Persistent `-stay_open` input
+
+With `-stay_open True -@ -`, stdin is read incrementally: each command is
+processed as soon as its `-executeN` line arrives, without waiting for stdin
+to close. EOF on piped stdin ends stay-open mode, matching ExifTool 13.60.
+The CLI integration test exercises two commands on the same live pipe.
+
 ### The contract between `options.rs` and `program.rs`
 
 The argument loop (script lines 626-1473) is `for (;;) { ... }`. Its head

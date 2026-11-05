@@ -444,7 +444,8 @@ pub(super) fn call(it: &mut Interp, name: &str, args: &[Expr], scope: &Rc<Scope>
             };
             Ok(vec![Value::from(at_end)])
         }
-        "read" | "sysread" => read(it, args, scope),
+        "read" => read(it, args, scope, false),
+        "sysread" => read(it, args, scope, true),
         "seek" | "sysseek" => {
             let r = (|| -> ER<bool> {
                 let hv = it.scalar(&args[0], scope)?;
@@ -552,7 +553,7 @@ pub(super) fn call(it: &mut Interp, name: &str, args: &[Expr], scope: &Rc<Scope>
                         match target {
                             Target::Last => return Ok(it.last_stat.clone()),
                             Target::Path(p) => if name == "lstat" { std::fs::symlink_metadata(p) } else { std::fs::metadata(p) },
-                            Target::Meta(m) => m,
+                            Target::Meta(m, _) => m,
                         }
                     }
                     None => std::fs::metadata(it.read_scalar("_", scope).to_text()),
@@ -596,7 +597,7 @@ pub(super) enum Target {
     Path(String),
     /// A handle on a file of the process (stdin, a pipe...): perl stats the
     /// descriptor itself (fstat), whatever its name was.
-    Meta(std::io::Result<std::fs::Metadata>),
+    Meta(std::io::Result<std::fs::Metadata>, bool),
     /// `_`: the last stat
     Last,
 }
@@ -619,14 +620,28 @@ pub(super) fn file_target(it: &mut Interp, e: &Expr, scope: &Rc<Scope>) -> ER<Ta
             let fh = h.borrow();
             return Ok(match (&fh.path, &fh.input) {
                 (Some(p), _) => Target::Path(p.clone()),
-                (None, Some(Input::File(f))) => Target::Meta(f.get_ref().metadata()),
+                (None, Some(Input::File(f))) => Target::Meta(f.get_ref().metadata(), is_pipe(f.get_ref())),
                 // (a file opened by descriptor, "+<&=FD")
-                (None, Some(Input::Rw(r))) => Target::Meta(r.f.metadata()),
+                (None, Some(Input::Rw(r))) => Target::Meta(r.f.metadata(), false),
                 (None, _) => Target::Path(String::new()),
             });
         }
     }
     Ok(Target::Path(v.to_text()))
+}
+
+#[cfg(windows)]
+fn is_pipe(file: &File) -> bool {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{GetFileType, FILE_TYPE_PIPE};
+
+    // SAFETY: GetFileType only inspects the open handle.
+    unsafe { GetFileType(file.as_raw_handle()) == FILE_TYPE_PIPE }
+}
+
+#[cfg(not(windows))]
+fn is_pipe(_file: &File) -> bool {
+    false
 }
 
 /// perl's 13-element stat list.
@@ -1023,8 +1038,8 @@ pub(crate) fn os_error_text(e: &std::io::Error) -> String {
     }
 }
 
-/// `read(FH, $buf, LEN, OFFSET)`
-fn read(it: &mut Interp, args: &[Expr], scope: &Rc<Scope>) -> ER<Vec<Value>> {
+/// `read` / `sysread(FH, $buf, LEN, OFFSET)`
+fn read(it: &mut Interp, args: &[Expr], scope: &Rc<Scope>, sysread: bool) -> ER<Vec<Value>> {
     if args.len() < 3 {
         return die("Not enough arguments for read");
     }
@@ -1037,28 +1052,48 @@ fn read(it: &mut Interp, args: &[Expr], scope: &Rc<Scope>) -> ER<Vec<Value>> {
     };
     let Some(h) = it.handle_of(&hv, false) else { return Ok(vec![Value::Undef]) };
     let mut data = vec![0u8; len];
-    let n = {
+    let (n, error) = {
         let mut fh = h.borrow_mut();
         match fh.input.as_mut() {
             Some(i) => {
                 let r = i.reader();
-                let mut got = 0;
-                while got < len {
-                    match r.read(&mut data[got..]) {
-                        Ok(0) => break,
-                        Ok(k) => got += k,
-                        Err(_) => break,
+                if sysread {
+                    match r.read(&mut data) {
+                        Ok(n) => (n, None),
+                        Err(e) => (0, Some(e)),
                     }
+                } else {
+                    let mut got = 0;
+                    while got < len {
+                        match r.read(&mut data[got..]) {
+                            Ok(0) => break,
+                            Ok(k) => got += k,
+                            Err(_) => break,
+                        }
+                    }
+                    (got, None)
                 }
-                got
             }
             None => return Ok(vec![Value::Undef]),
         }
     };
+    if let Some(e) = error {
+        it.set_scalar("main::!", Value::from(os_error_text(&e)));
+        return Ok(vec![Value::Undef]);
+    }
     data.truncate(n);
     let mut cur = lv.get().to_bytes().to_vec();
-    cur.resize(off, 0);
-    cur.extend_from_slice(&data);
+    if sysread {
+        if n > 0 {
+            let end = off.saturating_add(n);
+            let new_len = cur.len().max(end);
+            cur.resize(new_len, 0);
+            cur[off..end].copy_from_slice(&data);
+        }
+    } else {
+        cur.resize(off, 0);
+        cur.extend_from_slice(&data);
+    }
     lv.set(Value::bytes(cur))?;
     Ok(vec![Value::Int(n as i64)])
 }

@@ -85,6 +85,8 @@ pub static PROTOTYPES: &[(&str, &str, &str)] = &[
     ("Image::ExifTool::CBOR::ReadCBORValue", "$$$$", "Image::ExifTool::CBOR"),
     ("Image::ExifTool::CanCreate", "$", "Image::ExifTool"),
     ("Image::ExifTool::CanWrite", "$", "Image::ExifTool"),
+    ("Image::ExifTool::Canon::AFTrackingHistory", "$", "Image::ExifTool::Canon"),
+    ("Image::ExifTool::Canon::AFTrackingHistory128", "$;$", "Image::ExifTool::Canon"),
     ("Image::ExifTool::Canon::CalcSensorDiag", "$", "Image::ExifTool::Canon"),
     ("Image::ExifTool::Canon::CameraISO", "$;$", "Image::ExifTool::Canon"),
     ("Image::ExifTool::Canon::CanonEv", "$", "Image::ExifTool::Canon"),

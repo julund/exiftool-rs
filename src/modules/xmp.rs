@@ -520,13 +520,15 @@ pub(crate) fn unescape_char_v(it: &mut Interp, ch: &Value, conv: &Value, enc: &V
 pub fn fix_utf8(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (str_pt, mut bad) = (arg(&a, 0), arg(&a, 1));
     let mut fixed = Value::Undef;
+    let mut out = Vec::new();
+    let mut last = 0usize;
     // (pos($$strPt) = 0 autovivifies an undefined $strPt, but dies on
     // anything else that is not a SCALAR reference)
     if !str_pt.is_undef() {
         pl::at(3027);
         pl::sderef(&str_pt)?;
     }
-    let mut s: Vec<u8> = str_pt.deref().to_bytes().to_vec();
+    let s: Vec<u8> = str_pt.deref().to_bytes().to_vec();
     let mut p = 0usize; // start at beginning of string
     let hi = rx(r"([\x80-\xff])", "");
     while let Some(sp) = m_at(&hi, &s, p) {
@@ -557,13 +559,14 @@ pub fn fix_utf8(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
         if bad.is_undef() {
             bad = pl::s("?");
         }
-        let bb = bad.to_bytes();
-        s.splice(pos - 1..pos, bb.iter().copied());
-        p = pos - 1 + bb.len();
+        out.extend_from_slice(&s[last..pos - 1]);
+        out.extend_from_slice(&bad.to_bytes());
+        last = pos;
         fixed = n(1);
     }
     if fixed.truthy() {
-        set_deref(&str_pt, Value::bytes(s))?;
+        out.extend_from_slice(&s[last..]);
+        set_deref(&str_pt, Value::bytes(out))?;
     }
     ret(fixed)
 }
@@ -636,7 +639,7 @@ pub(crate) fn get_xmp_tag_id_v(it: &mut Interp, props: &Value, struct_props: &Va
     let ignore_et_prop = lex(it, "ignoreEtProp");
     let std_xlat_ns = pkg_hash(it, "Image::ExifTool::XMP::stdXlatNS");
     let main = pkg_hash(it, "Image::ExifTool::XMP::Main");
-    for prop in foreach_items(props, 3102)? {
+    for prop in foreach_items(props, 3103)? {
         // split name into namespace and property name
         // (Note: namespace can be '' for property qualifiers)
         let (ns, mut nm) = match m(&rx(r"(.*?):(.*)", ""), &prop) {
@@ -723,7 +726,7 @@ pub(crate) fn register_namespace_v(it: &mut Interp, table: &Value) -> ER<Value> 
         uri2ns.set(ns_ref.at(1).to_bytes(), ns.clone());
     } else {
         // must be a hash
-        pl::at(3169);
+        pl::at(3170);
         let mut nss = pl::hderef(&ns_ref)?.keys(); // allow multiple namespace definitions
         nss.sort();
         while let Some(k) = nss.pop() {
@@ -1022,7 +1025,7 @@ pub fn scan_for_xmp(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> 
     pl::method(it, &et, "VPrint", vec![n(0), pl::s("Scanning for XMP\n")])?;
     loop {
         if buff.is_undef() {
-            pl::at(3340);
+            pl::at(3341);
             check_invocant(&raf, "Read")?;
             let mut args = [buff.clone(), n(65536)];
             let r = method_aliased(it, &raf, "Read", &mut args)?;
@@ -1677,10 +1680,10 @@ fn parse_xmp_element_body(it: &mut Interp, et: &Value, tag_table_ptr: &Value, da
     // ($end or $end = length $$dataPt; then pos($$dataPt) = $start, which
     // autovivifies an undefined $dataPt but dies on any other non-reference)
     if !end.truthy() {
-        pl::at(3868);
+        pl::at(3869);
         pl::sderef(data_pt)?;
     } else if !data_pt.is_undef() {
-        pl::at(3876);
+        pl::at(3877);
         pl::sderef(data_pt)?;
     }
     let data = data_pt.deref().to_bytes();

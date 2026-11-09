@@ -22,7 +22,7 @@ fn or(a: Value, b: impl FnOnce() -> Value) -> Value {
 /// Returns: 1 on success
 pub fn process_settings(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (et, dir_info, tag_tbl) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
-    pl::at(950);
+    pl::at(904);
     let data = pl::sderef(&dir_info.get("DataPt"))?;
     pl::method(it, &et, "VerboseDir", vec![dir_info.get("DirName"), Value::Undef, pl::length(&data)])?;
     for item in pl::split(&re(";", ""), &data, 0) {
@@ -47,16 +47,16 @@ pub fn process_dji_info(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Valu
     let dir_start = or(dir_info.get("DirStart"), || n(0));
     let mut dir_len = dir_info.get("DirLen");
     if !dir_len.truthy() {
-        pl::at(968);
+        pl::at(922);
         dir_len = pl::sub(&pl::length(&pl::sderef(&data_pt)?), &dir_start);
     }
     let own = dir_start.truthy();
     if own {
-        pl::at(970);
+        pl::at(924);
         let buff = substr(it, &pl::sderef(&data_pt)?, &dir_start, Some(&dir_len))?;
         data_pt = pl::sref(buff);
     }
-    pl::at(973);
+    pl::at(927);
     pl::method(it, &et, "VerboseDir", vec![pl::s("DJIInfo"), Value::Undef, pl::length(&pl::sderef(&data_pt)?)])?;
     // (\G starts at the pos() of the caller's scalar, and the final failed
     // match resets it)

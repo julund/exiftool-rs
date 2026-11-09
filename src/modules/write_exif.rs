@@ -720,6 +720,11 @@ fn validate_image_data_v(it: &mut Interp, et: &Value, v_info: &Value, dir_name: 
         if (vi(0x103).is_undef() || vi(0x103).eq_str("1")) && vi(0x100).truthy() && vi(0x101).truthy() && (vi(0x117).truthy() || vi(0x145).truthy()) {
             let spp = vi(0x115);
             let samples_per_pix = if spp.truthy() { spp } else { n(1) };
+            if pl::gt(&samples_per_pix, &n(1000)) {
+                let method = if err_flag.truthy() { "Error" } else { "Warn" };
+                pl::method(it, et, method, vec![pl::s("Invalid SamplesPerPixel")])?;
+                return Ok(());
+            }
             let mut bits_per_sample = if vi(0x102).truthy() { pl::split_ws(&vi(0x102)) } else { vec![n(1); samples_per_pix.to_i64().max(0) as usize] };
             let byte_count_info = if vi(0x117).truthy() { vi(0x117) } else { vi(0x145) };
             let byte_counts = byte_count_info.at(1);
@@ -1004,7 +1009,7 @@ fn write_exif_v(it: &mut Interp, et: &Value, dir_info0: &Value, tag_table_ptr: &
     let mut data_pos = or0(dir_info.get("DataPos"));
     let mut dir_start = or0(dir_info.get("DirStart"));
     let dl = dir_info.get("DataLen");
-    pl::at(562);
+    pl::at(570);
     let mut data_len = if dl.truthy() { dl } else { len(&pl::sderef(&data_pt)?) };
     let dl = dir_info.get("DirLen");
     let mut dir_len = if dl.truthy() { dl } else { pl::sub(&data_len, &dir_start) };
@@ -2444,6 +2449,7 @@ fn write_exif_v(it: &mut Interp, et: &Value, dir_info0: &Value, tag_table_ptr: &
                                     sd.set("Offset", offset);
                                     sd.set("Where", pl::s(where_));
                                     sd.set("ImageData", subdir_info.get("ImageData"));
+                                    sd.set("TagID", new_id.clone());
                                     subdirs.push(sd);
                                     write_count += 1; // count number of subdirs written
                                 }
@@ -2627,12 +2633,12 @@ fn write_exif_v(it: &mut Interp, et: &Value, dir_info0: &Value, tag_table_ptr: &
                                 // only support int32 pointers (for now)
                                 if !pl::num_eq(&fsz(&new_format), &n(4)) && new_info.get("IsOffset").truthy() {
                                     if is_new > 0 {
-                                        pl::at(1912);
+                                        pl::at(1921);
                                         pl::warn(it, "Internal error (Offset not int32)")?;
                                         return Ok(Value::Undef);
                                     }
                                     if !pl::num_eq(&new_count, &read_count) {
-                                        pl::at(1913);
+                                        pl::at(1922);
                                         pl::warn(it, "Wrong count!")?;
                                         return Ok(Value::Undef);
                                     }
@@ -2873,6 +2879,14 @@ fn write_exif_v(it: &mut Interp, et: &Value, dir_info0: &Value, tag_table_ptr: &
             //
             // add any subdirectories, adding fixup information
             //
+            if subdirs.len() > 1 && re(r"^(ARW|ARQ|SR2)$", "").is_match(&et.get("FileType")) {
+                let mut exif_ifd = Vec::new();
+                let mut other_ifd = Vec::new();
+                for subdir in subdirs.drain(..) {
+                    if pl::num_eq(&subdir.get("TagID"), &n(0x8769)) && !subdir.get("ImageData").is_ref() { exif_ifd.push(subdir); } else { other_ifd.push(subdir); }
+                }
+                if exif_ifd.is_empty() { subdirs = other_ifd; } else { exif_ifd.extend(other_ifd); subdirs = exif_ifd; }
+            }
             for subdir in &subdirs {
                 let l = len(&get(&new_data)); // position of subdirectory in data
                 let subdir_fixup = subdir.get("Fixup");
@@ -3312,7 +3326,7 @@ fn write_exif_v(it: &mut Interp, et: &Value, dir_info0: &Value, tag_table_ptr: &
                         // set the size to the available data
                         size = pl::sub(&size, &diff);
                         if !write_value(it, vec![size.clone(), format_str.clone(), n(1), rf(&new_data), byte_count_pos.clone()])?.truthy() {
-                            pl::at(2507);
+                            pl::at(2534);
                             pl::warn(it, "Internal error writing thumbnail size")?;
                         }
                         // get the truncated image

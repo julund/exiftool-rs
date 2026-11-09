@@ -1,4 +1,4 @@
-# exiftool-rs: faithful port of ExifTool 13.60
+# exiftool-rs: faithful port of ExifTool 13.61
 
 The goal is a Rust clone of Perl ExifTool. It must cover everything ExifTool
 does, give identical output for every command and every argument, and run

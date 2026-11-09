@@ -1,6 +1,6 @@
 rc=0
 --- stdout
-exiftool-rs version N.N (port of ExifTool 13.60)
+exiftool-rs version N.N (port of ExifTool 13.61)
 Rust version N.N (TARGET)
 Platform: linux
 Included libraries:

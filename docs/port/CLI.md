@@ -1,6 +1,6 @@
 # Porting the exiftool application
 
-The `exiftool` script of ExifTool 13.60 (`../exiftool/exiftool`, 5082 lines
+The `exiftool` script of ExifTool 13.61 (`../exiftool/exiftool`, 5082 lines
 before `__END__`) is ported to Rust in `src/cli/`, with the method of
 PORTING.md: faithful, sub by sub, judged at every step against Perl.
 
@@ -43,7 +43,7 @@ makes the CLI judge run it.
 
 With `-stay_open True -@ -`, stdin is read incrementally: each command is
 processed as soon as its `-executeN` line arrives, without waiting for stdin
-to close. EOF on piped stdin ends stay-open mode, matching ExifTool 13.60.
+to close. EOF on piped stdin ends stay-open mode, matching ExifTool 13.61.
 The CLI integration test exercises two commands on the same live pipe.
 
 ### The contract between `options.rs` and `program.rs`
@@ -125,11 +125,11 @@ needs a Perl module the host's Perl lacks, are told apart by their kind:
 
 ### `-ver -v`
 
-`-ver` alone prints `13.60` as Perl does (scripts read it); with `-v` the
+`-ver` alone prints `13.61` as Perl does (scripts read it); with `-v` the
 lines that describe perl and its optional modules are the port's own:
 
 ```
-exiftool-rs version 0.0.0 (port of ExifTool 13.60)
+exiftool-rs version 0.0.0 (port of ExifTool 13.61)
 Rust version 1.99.1 (x86_64-unknown-linux-gnu)
 Platform: linux
 Included libraries:

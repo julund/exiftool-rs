@@ -347,7 +347,7 @@ fn engines_are_per_thread() {
 fn embedded_binary_is_binary() {
     // PDF's EmbeddedImage ValueConv is a SCALAR reference to an element of
     // the stream's dictionary: its raw value is the data (as many bytes as
-    // Perl ExifTool 13.60 reports), never the reference's "SCALAR(0x...)"
+    // Perl ExifTool 13.61 reports), never the reference's "SCALAR(0x...)"
     // text, and it prints as any binary value.
     for (file, size) in [("PDF.pdf", 501), ("PDF2.pdf", 251)] {
         let et = ExifTool::with_options(Options { extract_embedded: 1, ..Options::default() });

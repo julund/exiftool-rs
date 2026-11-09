@@ -2,7 +2,7 @@
 //!
 //! The tests that run ExifTool's own scripts, parse its sources or read a
 //! written file back with it need the source tree of the release the port
-//! follows (ExifTool 13.60): `$EXIFTOOL_DIR`, or `../exiftool` next to this
+//! follows (ExifTool 13.61): `$EXIFTOOL_DIR`, or `../exiftool` next to this
 //! repository. Without it they are skipped with a message, so `cargo test`
 //! works on a machine that has no checkout; the CI provides one.
 #![allow(dead_code)]

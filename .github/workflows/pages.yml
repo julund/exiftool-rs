@@ -28,7 +28,7 @@ concurrency:
 env:
   # (as ci.yml: PCRE2 built in, and the ExifTool release the port follows)
   PCRE2_SYS_STATIC: "1"
-  EXIFTOOL_VERSION: "13.60"
+  EXIFTOOL_VERSION: "13.61"
 
 jobs:
   # The timing page: every CLI case of the judges, run by Perl's exiftool and

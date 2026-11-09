@@ -2,12 +2,12 @@
 
 [![Crates.io](https://img.shields.io/crates/v/exiftool-rs.svg)](https://crates.io/crates/exiftool-rs)
 [![Documentation](https://docs.rs/exiftool-rs/badge.svg)](https://docs.rs/exiftool-rs)
-[![Parity](https://img.shields.io/badge/ExifTool%2013.60-parity%20report-1f8a4c)](https://le-syl21.github.io/exiftool-rs/)
+[![Parity](https://img.shields.io/badge/ExifTool%2013.61-parity%20report-1f8a4c)](https://le-syl21.github.io/exiftool-rs/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Le--Syl21%20Tools-5865F2?logo=discord&logoColor=white)](https://discord.gg/T37DYHmt2j)
 [![Accessibility](https://img.shields.io/badge/accessibility-screen%20readers%20%C2%B7%20keyboard%20%C2%B7%20WCAG%20AA%20contrast-2b6cb0)](#accessibility)
 
-A faithful Rust port of [ExifTool](https://exiftool.org/) 13.60 — read, write, and edit metadata in image, audio, video, and document files. ExifTool's own modules are embedded in the program and run by a Perl interpreter written in Rust, with ExifTool's subs and the `exiftool` application ported to Rust one by one: the output is ExifTool's, and no Perl installation is needed. The C libraries it needs (PCRE2, zlib) are built in.
+A faithful Rust port of [ExifTool](https://exiftool.org/) 13.61 — read, write, and edit metadata in image, audio, video, and document files. ExifTool's own modules are embedded in the program and run by a Perl interpreter written in Rust, with ExifTool's subs and the `exiftool` application ported to Rust one by one: the output is ExifTool's, and no Perl installation is needed. The C libraries it needs (PCRE2, zlib) are built in.
 
 ![Screenshot](assets/screenshot.png)
 
@@ -19,7 +19,7 @@ Questions, bug reports, beta testing, or just want to chat? Join the Discord:
 
 ## Features
 
-- **ExifTool 13.60 itself**: every format, tag table, conversion, option and
+- **ExifTool 13.61 itself**: every format, tag table, conversion, option and
   message is ExifTool's, run from its own code. ExifTool's test suite
   (`t/*.t`: 114 scripts, 604 tests) passes unchanged, every test image
   extracts identically, and the CLI is compared with Perl's `exiftool` case
@@ -66,7 +66,7 @@ exiftool-rs runs ExifTool's own code, so what it reads, prints and writes is Exi
 
 ## Supported Formats
 
-Every format ExifTool 13.60 reads and writes, with ExifTool's maker notes and
+Every format ExifTool 13.61 reads and writes, with ExifTool's maker notes and
 timed metadata (`-ee`): `exiftool-rs -listf` lists the readable types,
 `exiftool-rs -listwf` the writable ones, as `exiftool` does. Through the Rust
 API, the `extra-writers` feature also writes MP3/AIFF (ID3), FLAC, Ogg, Opus
@@ -192,7 +192,7 @@ Tag descriptions and PrintConv values are ExifTool's own translations (e.g. `Ori
 
 ## CLI Options
 
-Every option of ExifTool 13.60's `exiftool` application (`exiftool-rs -h`; [docs/port/CLI.md](docs/port/CLI.md)). The most used:
+Every option of ExifTool 13.61's `exiftool` application (`exiftool-rs -h`; [docs/port/CLI.md](docs/port/CLI.md)). The most used:
 
 | Option | Description |
 |--------|-------------|
@@ -226,7 +226,7 @@ Every option of ExifTool 13.60's `exiftool` application (`exiftool-rs -h`; [docs
 ## Testing
 
 ```bash
-# The crate's tests. Those that need Perl ExifTool's source tree (13.60) read
+# The crate's tests. Those that need Perl ExifTool's source tree (13.61) read
 # it from $EXIFTOOL_DIR, or ../exiftool next to this repository, and are
 # skipped without it.
 EXIFTOOL_DIR=/path/to/exiftool cargo test --release
@@ -242,7 +242,7 @@ PORT_BIN=$PWD/target/release/exiftool-rs python3 -I scripts/compare_cli.py /path
 
 `src/bin/parity` (feature `parity`, needs `perl`, plus `curl` and `tar` to
 fetch the pinned ExifTool release into `target/parity/`) runs exiftool-rs and
-Perl ExifTool 13.60 over the corpus in `tests/images/` and compares them. The
+Perl ExifTool 13.61 over the corpus in `tests/images/` and compares them. The
 [published report](https://le-syl21.github.io/exiftool-rs/) is generated from
 it by `.github/workflows/pages.yml` on every release:
 

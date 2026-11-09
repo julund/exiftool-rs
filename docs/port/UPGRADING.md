@@ -1,6 +1,6 @@
 # Moving the port to a new ExifTool release
 
-The port follows one ExifTool release (`EXIFTOOL_VERSION`, today 13.60).
+The port follows one ExifTool release (`EXIFTOOL_VERSION`, today 13.61).
 Most of a release comes with the regenerated dumps: the tables and their
 Perl strings, the anonymous subs of the tables, the module-level data, the
 Lang modules. What does not is the code: every named sub of ExifTool and
@@ -161,6 +161,26 @@ The other tests whose expected values are ExifTool's (`api_*`,
 `tests/data/expected*`) say which release they were taken from: when
 NEW's output differs, take the new output from NEW's Perl (not from the
 port), update the test, and list each change in the commit message.
+
+## 13.60 to 13.61 (2026-11-05, commit 9b8664d)
+
+`upgrade_diff.py` found eight changed native subs and two new Canon subs, all
+ported:
+
+| Perl | Sub | Change |
+|---|---|---|
+| ExifTool.pm | ProcessJPEG | Reject excessive JUMBF sequence numbers and correct the sequence-number warning |
+| Canon.pm | AFTrackingHistory, AFTrackingHistory128 (new) | Decode Canon AF tracking history records |
+| FLIF.pm | GetVarInt | Limit malformed variable-length integers to avoid hangs |
+| GoPro.pm | ProcessGoPro | Reject excessive record counts |
+| QuickTime.pm | ProcessMOV | Avoid seeking backwards for an empty atom |
+| QuickTimeStream.pl | ParseTag | Limit timed-metadata sample counts |
+| WriteExif.pl | ValidateImageData, WriteExif | Limit SamplesPerPixel and write Sony RAW ExifIFD before SubIFD for Imaging Edge compatibility |
+| XMP.pm | FixUTF8 | Rebuild malformed UTF-8 values in linear time |
+
+With the dumps: new Canon/Olympus tags and camera definitions, the DJI
+`NoiseReduction` rename, SlimHEIF recognition, and refreshed lookup and
+localization tables.
 
 ## 13.59 to 13.60 (2026-10-28, commit 9804093)
 

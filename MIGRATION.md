@@ -3,7 +3,7 @@
 ## From Perl ExifTool
 
 exiftool-rs 1.0 is a faithful port of [ExifTool](https://exiftool.org/)
-13.60: ExifTool's own modules, run by a Perl interpreter written in Rust.
+13.61: ExifTool's own modules, run by a Perl interpreter written in Rust.
 Its output is ExifTool's, so a script that parses `exiftool`'s output works
 on `exiftool-rs`'s unchanged. What differs:
 

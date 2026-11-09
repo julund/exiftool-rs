@@ -97,12 +97,12 @@ fn stay_open_stdin_processes_incremental_commands() {
 
     stdin.write_all(b"-ver\n-execute1\n").unwrap();
     stdin.flush().unwrap();
-    expect_line(&mut child, &stdout, "13.60");
+    expect_line(&mut child, &stdout, "13.61");
     expect_line(&mut child, &stdout, "{ready1}");
 
     stdin.write_all(b"-ver\n-execute2\n").unwrap();
     stdin.flush().unwrap();
-    expect_line(&mut child, &stdout, "13.60");
+    expect_line(&mut child, &stdout, "13.61");
     expect_line(&mut child, &stdout, "{ready2}");
 
     stdin.write_all(b"-stay_open\nFalse\n").unwrap();

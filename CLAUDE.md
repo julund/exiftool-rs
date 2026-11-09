@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-exiftool-rs is a faithful Rust port of Perl ExifTool 13.60: ExifTool's own
+exiftool-rs is a faithful Rust port of Perl ExifTool 13.61: ExifTool's own
 modules, dumped and embedded (`data/`), run by a Perl interpreter written in
 Rust, with ExifTool's subs and the `exiftool` application ported to Rust one
 by one as natives. The output must be ExifTool's, for every command and

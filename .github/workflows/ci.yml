@@ -18,7 +18,7 @@ env:
   # The Perl ExifTool release the port follows (src/api/mod.rs,
   # EXIFTOOL_VERSION; the lint job checks the two agree). Its source tree is
   # what the tests that need one and the judges of the parity job read.
-  EXIFTOOL_VERSION: "13.60"
+  EXIFTOOL_VERSION: "13.61"
 
 jobs:
   lint:

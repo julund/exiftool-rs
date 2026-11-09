@@ -1,4 +1,4 @@
-//! The `exiftool` script (ExifTool 13.60), ported sub by sub (see
+//! The `exiftool` script (ExifTool 13.61), ported sub by sub (see
 //! docs/port/CLI.md). This part: the small subs before the main program
 //! (script lines 329-376: `Image::ExifTool::EndDir` ... `Cleanup`) and the
 //! subs between SetImageInfo and ProcessFiles (lines 3678-4231:

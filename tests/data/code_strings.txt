@@ -257,9 +257,9 @@ Condition 111
             $$valPt =~ /^\x01\xf1([\x02\x03]\x00)?/ and
             ($1 or $$self{Make} eq "RECONYX")
         
-Condition 128
+Condition 132
 
-            $$valPt =~ /^\x15\0/ and substr($$valPt, 0x57, 1) eq "\0" and
+            $$valPt =~ /^\x15[\0\1]/ and substr($$valPt, 0x57, 1) eq "\0" and
             substr($$valPt, 0x78, 1) eq "\0"
         
 Condition 148
@@ -733,14 +733,6 @@ Condition 38
 $$self{LensID} and $$self{LensID} != 0
 Condition 72
 $$self{LensID} and $$self{LensID} != 0 and $$self{FocusMode} ne "Manual"
-Condition 66
-$$self{LensInfoSerial} and $$self{Model} !~ /\b(R6 Mark III|C50)$/
-Condition 129
-$$self{LensInfoSerial} and $$self{Model} !~ /\b(R6 Mark III|C50)$/ and ($$self{RFLensType} || 0) !~ /^(318|323|324|329|330|331)$/
-Condition 85
-$$self{LensInfoSerial} and ($$self{RFLensType} || 0) !~ /^(318|323|324|329|330|331)$/
-Condition 85
-$$self{LensInfoSerial} and ($$self{RFLensType} || 0) =~ /^(318|323|324|329|330|331)$/
 Condition 22
 $$self{LensMount} != 0
 Condition 22
@@ -1185,16 +1177,22 @@ Condition 35
 $$self{Model} =~ /\bEOS (R1|R5m2)$/
 Condition 39
 $$self{Model} =~ /\bEOS (R6m2|R8|R50)$/
+Condition 53
+$$self{Model} =~ /\bEOS R(6 Mark III|6 V|8 Mark II)$/
+Condition 79
+$$self{Model} =~ /\bEOS R(7|10)$/ and $count == 4608 and $$valPt =~ /^\xbb\xcc/
 Condition 42
 $$self{Model} =~ /\bEOS R(P|\d+)?(m\d)?\b/
 Condition 78
 $$self{Model} =~ /\bEOS R(\d|P\b|a\b|\b)/ and ($$self{LensType} || 0) == 61182
+Condition 76
+$$self{Model} =~ /\bEOS R100$/ and $count == 4608 and $$valPt =~ /^\xbb\xbb/
+Condition 74
+$$self{Model} =~ /\bEOS R3$/ and $count == 4608 and $$valPt =~ /^\xbb\xcc/
 Condition 31
 $$self{Model} =~ /\bEOS R50 V$/
 Condition 30
 $$self{Model} =~ /\bEOS R5m2$/
-Condition 41
-$$self{Model} =~ /\bEOS R6 (Mark III|V)$/
 Condition 28
 $$self{Model} =~ /\bEOS RP$/
 Condition 31
@@ -2095,6 +2093,8 @@ Condition 78
 $$valPt =~ /^[\x01\x02\x10\x20]/ and $$valPt !~ /^(\0\0\0\0|\x02\x50\x7c\x04)/
 Condition 40
 $$valPt =~ /^[\x01\x08\x1b].[\x08\x1b]/s
+Condition 24
+$$valPt =~ /^[\x05\x0d]/
 Condition 42
 $$valPt =~ /^[\x09\x0d\x0a\x20-\x7e]+\0*$/
 Condition 28
@@ -2147,6 +2147,8 @@ Condition 18
 $$valPt =~ /^\x01/
 Condition 22
 $$valPt =~ /^\x02\x01/
+Condition 18
+$$valPt =~ /^\x07/
 Condition 24
 $$valPt =~ /^\x08\0\0\0/
 Condition 20
@@ -2380,8 +2382,8 @@ Condition 31
 $count == 368 or $count == 5478
 Condition 11
 $count == 4
-Condition 32
-$count == 4528 or $count == 3778
+Condition 50
+$count == 4528 or $count == 3778 or $count == 3447
 Condition 28
 $count == 48 or $count == 64
 Condition 11
@@ -2500,6 +2502,12 @@ Condition 65
 ($$self{CameraInfoCount} = $count) and $$self{Model} =~ /\b1DS?$/
 Condition 32
 ($$self{FlashFired} & 0x01) != 1
+Condition 74
+($$self{LensInfoSerial} or $$self{RFLensType}) and $$self{LensInfoLayout2}
+Condition 115
+($$self{LensInfoSerial} or $$self{RFLensType}) and (not defined $$self{LensModel} or $$self{LensModel} =~ /\bIS\b/)
+Condition 78
+($$self{LensInfoSerial} or $$self{RFLensType}) and not $$self{LensInfoLayout2}
 Condition 112
 ($$self{Model} !~ /^DSC-/) or ($$self{Model} =~ /^DSC-(RX10M4|RX100M6|RX100M7|RX100M5A|HX95|HX99|RX0M2|RX1RM3)/)
 Condition 99
@@ -2532,6 +2540,8 @@ Condition 67
 length $$valPt == 32 and $$valPt !~ /^\0\0\xe0\xff\xff\xff\xef\x41/
 Condition 95
 length $$valPt > 12 and Get32u($valPt,4) == length($$valPt) and $$valPt =~ /^.{8}\xff\xd8\xff/s
+Condition 22
+length($$valPt) == 328
 Condition 74
 length($$valPt) > 0x20 and length($$valPt) == unpack("x6V",$$valPt) + 0x20
 Condition 22
@@ -2578,6 +2588,12 @@ DelCheck 23
 $val = ""; return undef
 DelCheck 48
 Image::ExifTool::MWG::ReconcileIPTCDigest($self)
+Hook 249
+
+            $$self{LensInfoSerial} = substr($$dataPt,$pos,4) ne "\0" x 4;
+            $$self{LensInfoLayout2} = length($$dataPt) >= $pos + 18 &&
+                substr($$dataPt,$pos+7,2) eq "\0\0" && substr($$dataPt,$pos+12,6) ne "\0" x 6;
+        
 Hook 230
 
             $varSize += 18 if $$self{Beef0004Ver} >= 7;
@@ -2625,8 +2641,6 @@ Hook 233
                 delete $$self{Prop2Len};
             }
         
-Hook 60
-$$self{LensInfoSerial} = substr($$dataPt,$pos,4) ne "\0" x 4
 Hook 64
 $$self{MediaHeaderVersion} and $format = "int64u", $varSize += 4
 Hook 64
@@ -3806,6 +3820,8 @@ PrintConv 19
 $val ? $val : "Off"
 PrintConv 28
 $val ? $val : "Use BitDepth"
+PrintConv 50
+$val ? ($val >= 65500 ? "inf" : "$val mm") : "n/a"
 PrintConv 49
 $val ? ($val==0xffffffff ? "n/a" : $val) : "Auto"
 PrintConv 62
@@ -4515,6 +4531,8 @@ PrintConvInv 8
 $val - 4
 PrintConvInv 27
 $val =~ /(\d+)/ ? $1 : $val
+PrintConvInv 51
+$val =~ /(\d+)/ ? $1 : ($val =~ /inf/i ? 65526 : 0)
 PrintConvInv 24
 $val =~ /(\d+)/ ? $1 : 0
 PrintConvInv 45
@@ -5822,6 +5840,8 @@ $$self{LeicaLEIC} = 1;$$self{Make} = $val
 RawConv 21
 $$self{LensID} = $val
 RawConv 24
+$$self{LensModel} = $val
+RawConv 24
 $$self{LensMount} = $val
 RawConv 67
 $$self{LensMount} = $val; $$self{Model} =~ /^(DSC-)/ ? undef : $val
@@ -6179,8 +6199,8 @@ RawConv 43
 $val eq "SBA" and $$self{HasSBA} = 1; undef
 RawConv 32
 $val eq "\0" x 16 ? undef : $val
-RawConv 31
-$val eq "\0\0\0" ? undef : $val
+RawConv 57
+$val eq "\0\0\0" || $val eq "\xff\xff\xff" ? undef : $val
 RawConv 33
 $val eq "\0\0\0\0" ? undef : $val
 RawConv 13
@@ -6231,6 +6251,8 @@ RawConv 62
 ($val == -1 and $$self{Model} =~ /DSLR-A100\b/) ? undef : $val
 RawConv 45
 ($val == -1 or $val == -32768) ? undef : $val
+RawConv 65
+($val == 0 or $val == 65535 or $val == 0xffffffff) ? undef : $val
 RawConv 48
 ($val =~ /\d/ and $val !~ /nan/i) ? $val : undef
 RawConv 41
@@ -8056,6 +8078,14 @@ ValueConv 46
 Image::ExifTool::ASF::GetGUID(substr($val,14))
 ValueConv 45
 Image::ExifTool::ASF::GetGUID(substr($val,2))
+ValueConv 47
+Image::ExifTool::Canon::AFTrackingHistory($val)
+ValueConv 50
+Image::ExifTool::Canon::AFTrackingHistory128($val)
+ValueConv 53
+Image::ExifTool::Canon::AFTrackingHistory128($val, 1)
+ValueConv 53
+Image::ExifTool::Canon::AFTrackingHistory128($val, 2)
 ValueConv 39
 Image::ExifTool::Canon::CameraISO($val)
 ValueConv 37

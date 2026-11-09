@@ -150,7 +150,7 @@ pub fn autoload(it: &mut Interp, a: Vec<Value>, want: Want) -> ER<Vec<Value>> {
     } else {
         let mut args = vec![autoload];
         args.extend(a.iter().cloned());
-        pl::at(8863);
+        pl::at(8864);
         call_aliased(it, "Image::ExifTool::DoAutoLoad", args, &a, 1, want)
     }
 }
@@ -285,7 +285,7 @@ pub fn get_matrix_structure(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec
 /// Returns: average sample rate (in Hz)
 pub fn calc_sample_rate(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (et, val_pt) = (arg(&a, 0), arg(&a, 1));
-    pl::at(8965);
+    pl::at(8966);
     let dat = pl::unpack("N*", &pl::sderef(&val_pt)?)?;
     let (mut num, mut dur) = (n(0), n(0));
     let mut i = 2usize;
@@ -297,7 +297,7 @@ pub fn calc_sample_rate(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Val
     if !(num.truthy() && dur.truthy() && et.get("MediaTS").truthy()) {
         return pl::ret_undef();
     }
-    pl::at(8973);
+    pl::at(8974);
     ret(pl::div(&pl::mul(&num, &et.get("MediaTS")), &dur)?)
 }
 
@@ -534,7 +534,7 @@ pub fn get_var_int(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
 
 fn get_var_int_impl(it: &mut Interp, data_pt: &Value, pos_arg: &mut Value, nn: &Value, default: &Value) -> ER<Value> {
     let pos = pos_arg.clone();
-    pl::at(9151);
+    pl::at(9152);
     let len = n(pl::sderef(data_pt)?.to_bytes().len() as i64);
     *pos_arg = pl::add(&pos, nn); // update current position
     if pl::gt(&pl::add(&pos, nn), &len) {
@@ -561,7 +561,7 @@ pub fn get_string(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
 }
 
 fn get_string_impl(_it: &mut Interp, data_pt: &Value, pos_arg: &mut Value) -> ER<Value> {
-    pl::at(9171);
+    pl::at(9172);
     let data = pl::sderef(data_pt)?.to_bytes();
     let len = n(data.len() as i64);
     let mut pos = pos_arg.clone();
@@ -938,7 +938,7 @@ fn handle_item_info_impl(it: &mut Interp, et: &Value) -> ER<Value> {
         et.get_or_new_array("PATH").push(s("ItemInformation"));
         let cur_pos = raf_tell(it, &raf)?;
         let primary = et.get("PrimaryItem");
-        pl::at(9463);
+        pl::at(9464);
         m(it, &et, "VerboseDir", vec![s("Processing items from ItemInformation"), n(pl::hderef(&items)?.len() as i64)])?;
         for id in sorted_num_keys(&items) {
             let item = items.get(id.to_bytes());
@@ -1221,7 +1221,7 @@ fn handle_item_info_impl(it: &mut Interp, et: &Value) -> ER<Value> {
     // process the item properties now that we should know their associations and document numbers
     let ipc = et.get("ItemPropertyContainer");
     if ipc.truthy() {
-        pl::at(9648);
+        pl::at(9649);
         let ipc_list = pl::aderef(&ipc)?;
         let (dir_info, sub_table, proc) = (arg(&ipc_list, 0), arg(&ipc_list, 1), arg(&ipc_list, 2));
         et.set("IsItemProperty", n(1)); // set item property flag
@@ -1278,7 +1278,7 @@ fn quick_time_format_impl(flags: &Value, len: &Value) -> Value {
 pub fn process_meta_data(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (et, dir_info, tag_table_ptr) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
     let data_pt = dir_info.get("DataPt");
-    pl::at(9697);
+    pl::at(9698);
     let data = pl::sderef(&data_pt)?;
     let dir_len = n(data.to_bytes().len() as i64);
     let verbose = m(it, &et, "Options", vec![s("Verbose")])?;
@@ -1347,7 +1347,7 @@ pub fn process_sample_desc(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<V
     let dir_len = if dl.truthy() {
         dl
     } else {
-        pl::at(9751);
+        pl::at(9752);
         pl::sub(&n(pl::sderef(&data_pt)?.to_bytes().len() as i64), &pos)
     };
     if pl::gt(&pl::add(&pos, &n(8)), &dir_len) {
@@ -1401,7 +1401,7 @@ pub fn process_hybrid(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
     let dir_len = if dl.truthy() {
         dl
     } else {
-        pl::at(9783);
+        pl::at(9784);
         pl::sub(&n(pl::sderef(&data_pt)?.to_bytes().len() as i64), &dir_start)
     };
     let end = pl::add(&dir_start, &dir_len);
@@ -1410,7 +1410,7 @@ pub fn process_hybrid(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
     let mut child_pos = Value::Undef;
 
     while pl::le(&pos, &pl::sub(&end, &n(8))) {
-        pl::at(9790);
+        pl::at(9791);
         let tag = substr_w(it, &pl::sderef(&data_pt)?, &pl::add(&try_, &n(4)), Some(&n(4)))?;
         // look only for well-behaved tag ID's
         if re(r"[^\w ]", "").is_match(&tag) {
@@ -1451,7 +1451,7 @@ pub fn process_rights(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
     let (et, dir_info, tag_table_ptr) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
     let data_pt = dir_info.get("DataPt");
     let data_pos = dir_info.get("Base");
-    pl::at(9827);
+    pl::at(9828);
     let data = pl::sderef(&data_pt)?;
     let dir_len = n(data.to_bytes().len() as i64);
     let opts = et.get("OPTIONS");
@@ -1495,7 +1495,7 @@ pub fn process_rights(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
 pub fn process_nextbase(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (et, dir_info, tag_tbl) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
     let data_pt = dir_info.get("DataPt");
-    pl::at(9865);
+    pl::at(9866);
     let data = pl::sderef(&data_pt)?;
     m(it, &et, "VerboseDir", vec![s("Nextbase"), Value::Undef, n(data.to_bytes().len() as i64)])?;
     for c in re(r"(.*?): +(.*)\x0d", "").each(&data) {
@@ -1517,7 +1517,7 @@ pub fn process_nextbase(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Valu
 pub fn process_encoding_params(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (et, dir_info, tag_table_ptr) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
     let data_pt = dir_info.get("DataPt");
-    pl::at(9882);
+    pl::at(9883);
     let data = pl::sderef(&data_pt)?;
     let dir_len = data.to_bytes().len() as i64;
     m(it, &et, "VerboseDir", vec![s("Encoding Params"), pl::div(&n(dir_len), &n(8))?])?;
@@ -1540,7 +1540,7 @@ pub fn process_keys(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> 
 fn process_keys_impl(it: &mut Interp, a: &[Value]) -> ER<Vec<Value>> {
     let (et, dir_info, tag_table_ptr) = (arg(a, 0), arg(a, 1), arg(a, 2));
     let data_pt = dir_info.get("DataPt");
-    pl::at(9901);
+    pl::at(9902);
     let data = pl::sderef(&data_pt)?;
     let dir_len = data.to_bytes().len() as i64;
     let mut out = Value::Undef;
@@ -1648,7 +1648,7 @@ fn process_keys_impl(it: &mut Interp, a: &[Value]) -> ER<Vec<Value>> {
             // delete other languages too if they exist
             let other = old_info.get("OtherLang");
             if other.truthy() {
-                pl::at(9979);
+                pl::at(9980);
                 for k in pl::aderef(&other)? {
                     item_list.delete(k.to_bytes());
                 }
@@ -1697,7 +1697,7 @@ pub fn identify_trailers(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Val
 fn identify_trailers_impl(it: &mut Interp, raf: &Value) -> ER<Value> {
     let (mut trailer, mut next_trail, mut buff) = (Value::Undef, Value::Undef, Value::Undef);
     let (mut typ, mut len);
-    pl::at(10018);
+    pl::at(10019);
     let pos = raf_tell(it, raf)?;
     let mut offset = n(0); // positive offset back from end of file
     while raf_seek(it, raf, pl::sub(&n(-40), &offset), n(2))? && pl::num_eq(&raf_read(it, raf, &mut buff, n(40))?, &n(40)) {
@@ -2645,7 +2645,7 @@ fn process_mov_impl(it: &mut Interp, a: &[Value]) -> ER<Vec<Value>> {
                 m(it, &et, "ProcessDirectory", vec![sub_dir_info, sub_table, proc])?;
                 m(it, &raf, "Seek", vec![seek_to.clone()])?;
             }
-            let ok = m(it, &raf, "Seek", vec![pl::sub(&seek_to, &n(1))])?.truthy() &&pl::num_eq(&raf_read(it, &raf, &mut buff, n(1))?, &n(1));
+            let ok = !size.truthy() || (m(it, &raf, "Seek", vec![pl::sub(&seek_to, &n(1))])?.truthy() && pl::num_eq(&raf_read(it, &raf, &mut buff, n(1))?, &n(1)));
             if !ok {
                 if re(r"^<b[r>]", "").is_match(&pl::pack("N", &[size.clone()])?) {
                     // check for corrupted HEIC file downloaded from heic.digital

@@ -304,6 +304,10 @@ pub fn process_go_pro(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
         check_sref(&data_pt)?;
         let u = pl::unpack(&format!("x{}a4CCn", pos.to_i64()), &data)?;
         let (tag, fmt, len, count) = (arg(&u, 0), arg(&u, 1), arg(&u, 2), arg(&u, 3));
+        if pl::gt(&count, &n(100_000_000)) {
+            m(it, &et, "Warn", vec![s("Invalid GoPro record count")])?;
+            break;
+        }
         if re(r"[^-_a-zA-Z0-9 ]", "").is_match(&tag) {
             if !tag.eq_str("\0\0\0\0") {
                 m(it, &et, "Warn", vec![s("Unrecognized GoPro record")])?;
@@ -369,7 +373,7 @@ pub fn process_go_pro(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>
             // unpack multiple undef/string values as a list
             let a = if format.eq_str("undef") { "a" } else { "A" };
             let t = format!("x{}{}", pos.to_i64(), format!("{a}{}", len.to_text()).repeat(count.to_i64().max(0) as usize));
-            pl::at(867);
+            pl::at(871);
             val = Value::new_array(pl::unpack(&t, &data)?);
         } else {
             val = scalar(part2::read_value(it, vec![data_pt.clone(), pos.clone(), format.clone(), Value::Undef, size.clone()], Want::Scalar))?;

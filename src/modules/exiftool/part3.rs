@@ -409,7 +409,7 @@ fn tag_table_keys_list(it: &mut Interp, tag_table_ptr: &Value) -> Vec<Value> {
 /// Return: Metadata path string
 pub fn metadata_path(_it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let self_ = arg(&a, 0);
-    pl::at(9150);
+    pl::at(9152);
     let parts: Vec<Vec<u8>> = pl::aderef(&self_.get("PATH"))?.iter().map(|v| v.to_bytes().to_vec()).collect();
     ret(Value::bytes(parts.join(&b'-')))
 }
@@ -521,7 +521,7 @@ pub fn do_escape(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
 /// the caller writes back where `$_[0]` aliases).
 fn do_escape_value(it: &mut Interp, v: &Value, proc_: &Value) -> ER<Option<Value>> {
     if !v.is_ref() {
-        pl::at(9719);
+        pl::at(9721);
         return Ok(Some(scalar_of(call_code_strict(it, proc_, vec![v.clone()], Want::Scalar)?)));
     } else if ref_of(v) == "ARRAY" {
         let len = v.len();
@@ -894,7 +894,7 @@ pub fn process_directory(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Val
     self_.get_or_new_hash("FOUND_DIR").set(dir_name.to_bytes(), n(1));
 
     // process the directory
-    pl::at(9134);
+    pl::at(9136);
     let rtn_val = scalar_of(call_code(it, &proc_, vec![self_.clone(), dir_info.clone(), tag_table_ptr.clone()], Want::Scalar)?);
 
     if let Value::ArrayRef(p) = self_.get_or_new_array("PATH") {
@@ -1006,7 +1006,7 @@ pub fn get_tag_table(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>>
         // use strict 'refs';
         let init = table.get("INIT_TABLE");
         if init.truthy() {
-            pl::at(9026);
+            pl::at(9028);
             call_code_strict(it, &init, vec![table.clone()], Want::Void)?;
         }
         table.set("TABLE_NAME", table_name.clone()); // set table name
@@ -1248,7 +1248,7 @@ fn add_tag_to_table_impl(it: &mut Interp, tag_table_ptr: &Value, tag_id: &Value,
             tag_info.get_or_new_hash("Groups").set(&k, table_groups.get(&k));
         }
     } else {
-        pl::at(9293);
+        pl::at(9295);
         tag_info.set("Groups", pl::hderef(&tag_table_ptr.get("GROUPS"))?.hash_copy());
     }
     if tag_info.get("Flags").truthy() {
@@ -1930,7 +1930,7 @@ pub fn process_binary_data(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<V
     let ttp = g(&tag_table_ptr);
     let data_pt = cell(di.get("DataPt"));
     let dp = g(&data_pt);
-    pl::at(9931);
+    pl::at(9933);
     let data_len = cell(len_of(&pl::sderef(&dp)?));
     let dir_start = cell(or(di.get("DirStart"), n(0)));
     let max_len = cell(pl::sub(&g(&data_len), &g(&dir_start)));
@@ -4510,9 +4510,11 @@ fn process_jpeg_impl(it: &mut Interp, a: Vec<Value>) -> ER<Value> {
                     method(it, "Warn", vec![pl::s("Invalid JUMBF segment")])?;
                 } else if !chunks.at(seq_.to_i64()).is_undef() && pl::length(&chunks.at(seq_.to_i64())).truthy() {
                     method(it, "Warn", vec![pl::s("Duplicate JUMBF sequence number")])?;
+                } else if pl::gt(&seq_, &n(10_000)) {
+                    method(it, "Warn", vec![pl::s("Invalid JUMBF sequence number")])?;
                 } else {
                     if !seq_.truthy() {
-                        method(it, "Warn", vec![pl::s("Incorrect JUMBF sequence numbering (should start from 0, not 1)")])?;
+                        method(it, "Warn", vec![pl::s("Incorrect JUMBF sequence numbering (should start from 1, not 0)")])?;
                     }
                     // add to list of JUMBF chunks
                     let c = substr(it, &seg_data_pt.deref(), &pl::add(&n(8), &hdr_len), None)?;

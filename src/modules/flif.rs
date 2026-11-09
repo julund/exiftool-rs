@@ -65,8 +65,9 @@ pub fn get_var_int(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
     let (raf, add) = (arg(&a, 0), arg(&a, 1));
     let mut buff = Value::Undef;
     let mut val = n(0);
+    let mut count = 0;
     loop {
-        pl::at(119);
+        pl::at(120);
         if !read(it, &raf, &mut buff, n(1))?.truthy() {
             return pl::ret_undef();
         }
@@ -75,6 +76,8 @@ pub fn get_var_int(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
         if !ops::bit_and(&byte, &n(0x80)).truthy() {
             break;
         }
+        count += 1;
+        if count > 9 { return pl::ret_undef(); }
         val = ops::shift_left(&val, &n(7));
     }
     pl::ret(pl::add(&val, &if add.truthy() { add } else { n(0) }))
@@ -124,7 +127,7 @@ pub fn read_flif_header(it: &mut Interp, a: Vec<Value>, want: Want) -> ER<Vec<Va
     let mut vals: Vec<Value> = Vec::new();
 
     // verify this is a valid FLIF file
-    pl::at(156);
+    pl::at(158);
     if !read_eq(it, &raf, &mut buff, &n(6))? {
         return pl::ret_nothing(want);
     }
@@ -149,9 +152,9 @@ pub fn read_flif_header(it: &mut Interp, a: Vec<Value>, want: Want) -> ER<Vec<Va
     }
 
     // return the binary header block
-    pl::at(167);
+    pl::at(169);
     let hdr_len = pl::method(it, &raf, "Tell", vec![])?;
-    pl::at(168);
+    pl::at(170);
     if !(pl::method(it, &raf, "Seek", vec![n(0), n(0)])?.truthy()
         && read_eq(it, &raf, &mut buff, &hdr_len)?)
     {

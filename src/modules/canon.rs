@@ -54,6 +54,9 @@ fn get32u(it: &mut Interp, data_pt: &Value, pos: Value) -> ER<Value> {
     pl::call(it, "Image::ExifTool::Get32u", vec![data_pt.clone(), pos])
 }
 
+fn get16s(it: &mut Interp, data_pt: &Value, pos: i64) -> ER<Value> { pl::call(it, "Image::ExifTool::Get16s", vec![data_pt.clone(), n(pos)]) }
+fn get32s(it: &mut Interp, data_pt: &Value, pos: i64) -> ER<Value> { pl::call(it, "Image::ExifTool::Get32s", vec![data_pt.clone(), n(pos)]) }
+
 //------------------------------------------------------------------------------
 /// Recognize various firmware versions in Canon CameraInfo
 /// Inputs: 0) ExifTool ref, 1) CameraInfo ref, 2) lookup ref for firmware index
@@ -64,7 +67,7 @@ pub fn find_firm_ver(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>>
     let mut val = Value::Undef;
     // (scalar //g from pos($$valPt), never set on the fresh $val of the
     // RawConv that calls this)
-    pl::at(10796);
+    pl::at(11100);
     let data = pl::sderef(&val_pt)?;
     let b = data.to_bytes();
     let rx = crate::perl::regex::compile(br"(\d+\.\d+\.\d+)[ \0]([0-9A-F]{2}([.(][.)a-zA-Z0-9]+)?)", "").expect("pattern");
@@ -196,7 +199,7 @@ pub fn print_lens_id(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>>
         }
         let mut tcs = vec![n(1), f(1.4), n(2), f(2.8)];
         let (mut model_tc, mut model_tc_name) = (Value::Undef, Value::Undef);
-        pl::at(10900);
+        pl::at(11204);
         pl::warn_uninit(it, &lens_model, "$lensModel", "pattern match (m//)")?;
         if let Some(m) = re(r" \+ ((EXTENDER )?RF)?(\d+(\.\d*)?)x\b", "").m(&lens_model) {
             // the EOS R5m2 doesn't scale FocalLength or MaxAperture for some adapted
@@ -240,15 +243,15 @@ pub fn print_lens_id(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>>
                     let mut p = b"^".to_vec();
                     p.extend_from_slice(&cap(&m, 1).to_bytes());
                     // (the pattern is compiled only when the list is not empty)
-                    pl::at(10928);
+                    pl::at(11232);
                     if !maybe.is_empty() && pl::re_dyn(&p, "")?.is_match(maybe.last().unwrap()) {
                         maybe.pop();
                     }
-                    pl::at(10929);
+                    pl::at(11233);
                     if !likely.is_empty() && pl::re_dyn(&p, "")?.is_match(likely.last().unwrap()) {
                         likely.pop();
                     }
-                    pl::at(10930);
+                    pl::at(11234);
                     if !matches.is_empty() && pl::re_dyn(&p, "")?.is_match(matches.last().unwrap()) {
                         matches.pop();
 
@@ -901,7 +904,7 @@ pub fn process_serial_data(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<V
                     et.get_or_new_hash("TAG_EXTRA").get_or_new_hash(key.to_bytes()).set("G6", format.clone());
                 }
                 if opts.get("SaveBin").truthy() {
-                    pl::at(11297);
+                    pl::at(11601);
                     let bin = substr(&pl::sderef(&data_pt)?, pl::add(&pos, &offset).to_i64(), Some(len.to_i64()));
                     et.get_or_new_hash("TAG_EXTRA").get_or_new_hash(key.to_bytes()).set("BinVal", bin);
                 }
@@ -934,7 +937,7 @@ pub fn process_cmt3(it: &mut Interp, a: Vec<Value>, want: Want) -> ER<Vec<Value>
         // remove old (unused) trailer
         // (s/// on $$dataPt autovivifies an undefined $dataPt, but a string
         //  or another kind of reference dies)
-        pl::at(11422);
+        pl::at(11726);
         if !data_pt.is_undef() {
             pl::sderef(&data_pt)?;
         }
@@ -961,7 +964,7 @@ pub fn process_exif_info(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Val
     let start = dir_info.get("DirStart");
     let start = if start.truthy() { start } else { n(0) };
     let dir_len = dir_info.get("DirLen");
-    pl::at(11440);
+    pl::at(11855);
     let dir_len = if dir_len.truthy() { dir_len } else { pl::sub(&pl::length(&pl::sderef(&data_pt)?), &start) };
     let dir_end = pl::add(&start, &dir_len);
     // loop through TIFF-format EXIF/MakerNote records
@@ -1010,7 +1013,7 @@ pub fn process_ctmd(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> 
     let (et, dir_info, tag_table_ptr) = (arg(&a, 0), arg(&a, 1), arg(&a, 2));
     let data_pt = dir_info.get("DataPt");
     let verbose = pl::method(it, &et, "Options", vec![pl::s("Verbose")])?;
-    pl::at(11470);
+    pl::at(11885);
     let dir_len = pl::length(&pl::sderef(&data_pt)?);
     let mut pos = n(0);
 
@@ -1091,6 +1094,82 @@ pub fn process_ctmd(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> 
         pl::method(it, &et, "Warn", vec![pl::s("Error parsing Canon CTMD data"), n(1)])?;
     }
     ret(n(1))
+}
+
+//------------------------------------------------------------------------------
+pub fn af_tracking_history(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
+    let dat = arg(&a, 0).to_bytes().to_vec();
+    let (target, eye, parts) = (["n/a", "None", "Head", "Body", "Face", "Eye"], ["n/a", "Left", "Right", "Unresolved"], ["Head", "Body", "Face", "Eye", "Both Eyes"]);
+    let old_order = pl::call(it, "Image::ExifTool::GetByteOrder", vec![])?;
+    pl::call(it, "Image::ExifTool::SetByteOrder", vec![pl::s("II")])?;
+    let mut t0 = None;
+    let mut list = Vec::new();
+    for i in (0..=dat.len().saturating_sub(168)).step_by(168) {
+        let b = &dat[i..i + 168];
+        if b[0] != 0x15 || b[1] > 1 || b[0x57] != 0 || b[0x78] != 0 { continue; }
+        let rec = Value::bytes(b);
+        let rp = pl::sref(rec.clone());
+        let t = get32s(it, &rp, 8)?.to_i64();
+        let base = *t0.get_or_insert(t);
+        let tgt = (b[0x8f] & 0x0f) as usize;
+        let mask = ((u16::from_le_bytes([b[0x92], b[0x93]]) & 0x7c) >> 2) as usize;
+        let selected: Vec<&str> = (0..5).filter(|j| mask & (1 << j) != 0).map(|j| parts[j]).collect();
+        let selected = if selected.is_empty() { "none".to_owned() } else { selected.join("+") };
+        let area = pl::unpack("v4", &substr(&rec, 0x94, Some(8)))?;
+        let eye_used = eye[(b[0x9d] & 3) as usize];
+        let pt = [get16s(it, &rp, 0x70)?, get16s(it, &rp, 0x72)?];
+        let raw_dist = u16::from_le_bytes([b[0x58], b[0x59]]) as i64;
+        let dist = if raw_dist == 0 { pl::s("n/a") } else if raw_dist >= 65500 { pl::s("inf") } else { pl::s(&format!("{raw_dist} mm")) };
+        let pos = get16s(it, &rp, 0x0e)?;
+        let fe = [get16s(it, &rp, 0x60)?, get16s(it, &rp, 0x62)?, get16s(it, &rp, 0x68)?];
+        let (af_t, fr_t) = (u16::from_le_bytes([b[0x6e], b[0x6f]]) as i64, u16::from_le_bytes([b[0x6c], b[0x6d]]) as i64);
+        let tgt = target.get(tgt).map_or_else(|| pl::s(&format!("Unknown ({tgt})")), |x| pl::s(x));
+        let eye = if eye_used == "n/a" { pl::s("") } else { pl::s(&format!("; {eye_used} eye")) };
+        list.push(pl::sprintf("%+.1f ms: %s %dx%d at (%d %d)%s; parts %s; raw centre %+d %+d; focus %s %+d; samples %+d %+d %+d; timers %d %d ms", &[Value::Num((t-base) as f64/1000.0), tgt, area[2].clone(), area[3].clone(), area[0].clone(), area[1].clone(), eye, pl::s(&selected), pt[0].clone(), pt[1].clone(), dist, pos, fe[0].clone(), fe[1].clone(), fe[2].clone(), n(af_t), n(fr_t)]));
+    }
+    pl::call(it, "Image::ExifTool::SetByteOrder", vec![old_order])?;
+    ret(if list.is_empty() { Value::Undef } else { Value::new_array(list) })
+}
+
+pub fn af_tracking_history_128(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
+    let dat = arg(&a, 0).to_bytes().to_vec();
+    let lay = arg(&a, 1).to_i64();
+    let target = ["n/a", "None", "Head", "Body", "Face", "Eye"];
+    let size = if lay == 2 { 64 } else { 128 };
+    let old_order = pl::call(it, "Image::ExifTool::GetByteOrder", vec![])?;
+    pl::call(it, "Image::ExifTool::SetByteOrder", vec![pl::s("II")])?;
+    let (mut t0, mut prev): (Option<i64>, Option<i64>) = (None, None);
+    let mut list = Vec::new();
+    for i in (0..=dat.len().saturating_sub(size)).step_by(size) {
+        let b = &dat[i..i + size];
+        if lay == 0 && b[0] != 5 && b[0] != 0x0d { break; }
+        let off = if lay == 1 { 0x0c } else { 8 };
+        let t = u32::from_le_bytes(b[off..off+4].try_into().unwrap()) as i64;
+        if prev.is_some_and(|p| t > p || p-t > 1_000_000) { break; }
+        let rec = Value::bytes(b);
+        let rp = pl::sref(rec.clone());
+        if lay == 2 {
+            let pt = [get16s(it, &rp, 0x30)?, get16s(it, &rp, 0x32)?];
+            if pt.iter().any(|x| x.to_i64().abs() > 4000) { continue; }
+            let base = *t0.get_or_insert(t); prev = Some(t);
+            list.push(pl::sprintf("%+.1f ms: raw centre %+d %+d", &[Value::Num((t-base) as f64/1000.0), pt[0].clone(), pt[1].clone()]));
+            continue;
+        }
+        let aoff = if lay != 0 { 0x46 } else { 0x4e };
+        let area = pl::unpack("v4", &substr(&rec, aoff, Some(8)))?;
+        if area.iter().any(|x| x.to_i64() >= 8192) || !area[2].truthy() || !area[3].truthy() { continue; }
+        prev = Some(t); let base = *t0.get_or_insert(t);
+        if lay != 0 {
+            list.push(pl::sprintf("%+.1f ms: %dx%d at (%d %d)", &[Value::Num((t-base) as f64/1000.0), area[2].clone(), area[3].clone(), area[0].clone(), area[1].clone()]));
+            continue;
+        }
+        let tgt = b[0x42] as usize;
+        let pt = [get16s(it, &rp, 0x70)?, get16s(it, &rp, 0x72)?];
+        let tgt = target.get(tgt).map_or_else(|| pl::s(&format!("Unknown ({tgt})")), |x| pl::s(x));
+        list.push(pl::sprintf("%+.1f ms: %s %dx%d at (%d %d); raw centre %+d %+d", &[Value::Num((t-base) as f64/1000.0), tgt, area[2].clone(), area[3].clone(), area[0].clone(), area[1].clone(), pt[0].clone(), pt[1].clone()]));
+    }
+    pl::call(it, "Image::ExifTool::SetByteOrder", vec![old_order])?;
+    ret(if list.is_empty() { Value::Undef } else { Value::new_array(list) })
 }
 
 //------------------------------------------------------------------------------
@@ -1227,5 +1306,7 @@ pub fn register(it: &mut Interp) {
     it.define_native("Image::ExifTool::Canon::ProcessExifInfo", process_exif_info);
     it.define_native("Image::ExifTool::Canon::ProcessCTMD", process_ctmd);
     it.define_native("Image::ExifTool::Canon::ProcessFilters", process_filters);
+    it.define_native("Image::ExifTool::Canon::AFTrackingHistory", af_tracking_history);
+    it.define_native("Image::ExifTool::Canon::AFTrackingHistory128", af_tracking_history_128);
     it.define_native("Image::ExifTool::Canon::WriteCanon", write_canon);
 }

@@ -40,7 +40,8 @@ pub fn get_file_type<P: AsRef<std::path::Path>>(path: P) -> Result<FileType> {
     exiftool::get_file_type(path)
 }
 
-/// Library version.
+/// Library version. Its major and minor components mirror
+/// [`EXIFTOOL_VERSION`]; its patch component is the port release revision.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The Perl ExifTool release this crate is a port of.

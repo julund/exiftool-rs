@@ -1,6 +1,6 @@
 [package]
 name = "exiftool-rs"
-version = "1.0.0"
+version = "13.61.0"
 edition = "2021"
 description = "Read, write, and edit metadata in every format ExifTool handles — a faithful Rust port of Perl ExifTool 13.61, its own Perl engine running ExifTool's code, with a CLI, a GUI and a Rust API"
 # As the port declares: ExifTool itself is free software under the same terms

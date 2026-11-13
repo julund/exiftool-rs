@@ -1,8 +1,20 @@
 # Migration Guide
 
+## Version numbers
+
+Starting with 13.61.0, exiftool-rs uses
+`EXIFTOOL_MAJOR.EXIFTOOL_MINOR.PORT_REVISION`. The first release for an
+ExifTool baseline has revision 0; later Rust-port, dependency or packaging
+releases on the same baseline increment it. A new ExifTool baseline resets the
+revision to 0.
+
+The earlier exiftool-rs 1.0.0 release remains available and mirrors ExifTool
+13.60. Cargo requirements on the old `1` series do not select 13.x releases;
+update them to `13.61` (compatible updates) or `=13.61.0` (exact behaviour).
+
 ## From Perl ExifTool
 
-exiftool-rs 1.0 is a faithful port of [ExifTool](https://exiftool.org/)
+exiftool-rs 13.61 is a faithful port of [ExifTool](https://exiftool.org/)
 13.61: ExifTool's own modules, run by a Perl interpreter written in Rust.
 Its output is ExifTool's, so a script that parses `exiftool`'s output works
 on `exiftool-rs`'s unchanged. What differs:

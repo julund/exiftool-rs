@@ -2,6 +2,29 @@
 
 All notable changes to `exiftool-rs` are documented here.
 
+## [13.61.0] - 2026-11-13
+
+The first release under mirrored versioning: the first two components are the
+Perl ExifTool release, and the third is the exiftool-rs port revision. The
+previous exiftool-rs 1.0.0 release mirrored ExifTool 13.60 and remains
+available.
+
+### Changed
+
+- Updated the complete port from ExifTool 13.60 to 13.61, including regenerated
+  tables, native subs, CLI version output and parity oracles.
+- Added Canon AF tracking history, SlimHEIF recognition and new Canon/Olympus
+  definitions; renamed DJI NRSetting to NoiseReduction as upstream did.
+- Kept the public Rust API compatible; `EXIFTOOL_VERSION` now reports 13.61 and
+  the crate version is 13.61.0.
+
+### Fixed
+
+- Bounded malformed JUMBF, FLIF, GoPro, QuickTime and TIFF counts that could
+  cause hangs or excessive memory use.
+- Repaired malformed UTF-8 in linear time and preserved Sony Imaging Edge
+  compatibility when rewriting ARW/ARQ/SR2 files.
+
 ## [1.0.0] - 2026-10-30
 
 exiftool-rs becomes a faithful port of Perl ExifTool 13.60: ExifTool's own

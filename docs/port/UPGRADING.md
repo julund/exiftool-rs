@@ -87,10 +87,15 @@ helpers, `pl::at(LINE)` with the NEW line before a statement that can
 die or warn). `port_status.py NEW FILE` checks that every sub of a file
 is still registered. Group the commits by module.
 
-Then the version: `EXIFTOOL_VERSION` (src/api/mod.rs), `$version` in
-src/cli/program.rs, the crate description (Cargo.toml), the doc comments
-of src/lib.rs and src/cli/, the docs here, and the golden output of
-`-ver -v` (`CLI_GOLDEN_UPDATE=1`, below).
+Then the versions: set `EXIFTOOL_VERSION` (src/api/mod.rs) and `$version` in
+src/cli/program.rs to NEW's `MAJOR.MINOR`, and set the crate version in
+Cargo.toml to `MAJOR.MINOR.0` (then update Cargo.lock). The first release for
+an ExifTool baseline has port revision 0. Any later published Rust-port,
+dependency or packaging release on the same baseline increments that revision;
+the next ExifTool baseline resets it to 0. Update the crate description, the
+doc comments of src/lib.rs and src/cli/, the changelog and other docs, and the
+golden output of `-ver -v` (`CLI_GOLDEN_UPDATE=1`, below). CI checks that the
+crate version's first two components equal `EXIFTOOL_VERSION`.
 
 ## 5. Judges
 

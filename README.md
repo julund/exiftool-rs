@@ -11,6 +11,18 @@ A faithful Rust port of [ExifTool](https://exiftool.org/) 13.61 — read, write,
 
 ![Screenshot](assets/screenshot.png)
 
+## Versioning
+
+The crate version mirrors ExifTool as `EXIFTOOL_MAJOR.EXIFTOOL_MINOR.PORT_REVISION`:
+`13.61.0` is the first exiftool-rs release for ExifTool 13.61, and a later
+Rust-port or packaging fix on that baseline is `13.61.1`. Moving to ExifTool
+13.62 resets the revision, producing `13.62.0`. The public Rust API remains
+compatible throughout an ExifTool major series.
+
+Use `exiftool-rs = "13.61"` to accept compatible 13.x updates. Programs that
+need the exact metadata behaviour of one port release should pin it, for
+example `exiftool-rs = "=13.61.0"`.
+
 ## Community & support
 
 Questions, bug reports, beta testing, or just want to chat? Join the Discord:

@@ -41,7 +41,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          tag="${tag%%-*}"                  # v1.2.3-rc1 → 1.2.3
           # `cargo pkgid` reports the version the published crate actually
           # uses, without assuming where the field sits in Cargo.toml.
           crate=$(cargo pkgid -p exiftool-rs)
@@ -60,6 +59,15 @@ jobs:
             echo "::error::EXIFTOOL_VERSION=$EXIFTOOL_VERSION here, but src/api/mod.rs says $(grep 'EXIFTOOL_VERSION: &str' src/api/mod.rs)"
             exit 1
           }
+          crate=$(cargo pkgid -p exiftool-rs)
+          crate="${crate##*[@#]}"
+          core="${crate%%-*}"
+          port_base="${core%.*}"
+          if [ "$port_base" != "$EXIFTOOL_VERSION" ]; then
+            echo "::error::crate version $crate must begin with ExifTool version $EXIFTOOL_VERSION"
+            exit 1
+          fi
+          echo "crate $crate <-> ExifTool $EXIFTOOL_VERSION: OK"
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
 

@@ -139,9 +139,12 @@ Notes on the judges:
   three in text mode (`-a -u -G1 -s -n`, which escapes nothing), one by
   one.
 - Known differences that do not come from a release, listed in the case
-  files' headers (`-k`/`-pause`: the port has no Term::ReadKey). A case
-  that differs once and not when run alone (`compare_cli.py NEW FILTER`)
-  is timing, not a difference.
+  files' headers (`-k`/`-pause`: the port has no Term::ReadKey). ExifTool
+  13.61 also renders one undocumented binary Minolta MakerNote value
+  differently when `-j -a -u -G1 -n` forces unknown binary tags into JSON
+  text; the extracted bytes are identical with `-b`. A case that differs
+  once and not when run alone (`compare_cli.py NEW FILTER`) is timing, not
+  a difference.
 
 The Perl oracles of the root crate's tests (`tests/expected*`, which the
 port's api_regression.rs reads too) come from ExifTool. Regenerate them

@@ -410,15 +410,6 @@ pub fn escape_json(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
         let b = pl::call(it, "Image::ExifTool::XMP::EncodeBase64", vec![s, n(1)])?;
         return ret(pl::concat(&pl::concat(&pl::s("\"base64:"), &b), &pl::s("\"")));
     }
-    // JSON strings must be valid UTF-8. Do this before running the regexes
-    // below: malformed bytes in a value marked as a character string would
-    // otherwise be decoded by the regex engine as U+FFFD instead of being
-    // replaced with '?' as ExifTool's FixUTF8 does.
-    if pl::lt(&json, &n(2)) && !sc(it, "altEnc").truthy() {
-        let r = pl::sref(s.clone());
-        pl::call(it, "Image::ExifTool::XMP::FixUTF8", vec![r.clone()])?;
-        s = r.deref();
-    }
     // escape special characters
     let json_char = super::lex_hash(it, "jsonChar");
     re(r#"(["\t\n\r\\])"#, "s").subst(&mut s, true, |c| {
@@ -431,6 +422,12 @@ pub fn escape_json(it: &mut Interp, a: Vec<Value>, _w: Want) -> ER<Vec<Value>> {
         pl::tr(&mut s, r"\0", "", "d"); // remove all nulls
         // escape other control characters with \u
         re(r"([\x00-\x1f\x7f])", "s").subst(&mut s, true, |c| pl::sprintf("\\u%.4X", &[n(cap(c, 1).to_bytes()[0] as i64)]).to_bytes().to_vec());
+        // JSON strings must be valid UTF8
+        if !sc(it, "altEnc").truthy() {
+            let r = pl::sref(s.clone());
+            pl::call(it, "Image::ExifTool::XMP::FixUTF8", vec![r.clone()])?;
+            s = r.deref();
+        }
     } else {
         // PHP
         if !sc(it, "isBinary").truthy() {

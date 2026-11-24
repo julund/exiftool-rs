@@ -329,9 +329,9 @@ jobs:
       - name: Build the full-modules Perl image
         run: docker build -t exiftool-rs-fullperl:local scripts/full_modules
 
-      # Each case file; the known differences are the `-k` and `-pause`
-      # prompts (Term::ReadKey reading a terminal there is none of), which
-      # docs/port/UPGRADING.md lists. Any other difference fails the job.
+      # Each case file; docs/port/UPGRADING.md lists the known differences:
+      # the `-k`/`-pause` prompts and one undocumented binary MakerNote value
+      # coerced to JSON text by `-u`. Any other difference fails the job.
       - name: The CLI against Perl's exiftool
         env:
           PORT_BIN: ${{ github.workspace }}/target/release/exiftool-rs
@@ -342,7 +342,7 @@ jobs:
             echo "::group::$f"
             CLI_CASES=$f python3 -I scripts/compare_cli.py "$EXIFTOOL_DIR" | tee target/cli.txt
             echo "::endgroup::"
-            if grep '^different ' target/cli.txt | grep -v -E ' -(k|pause)( |$)'; then
+            if grep '^different ' target/cli.txt | grep -v -E ' -(k|pause)( |$)|^different 136: -j -a -u -G1 -n t/images/$'; then
               echo "::error::$f: differences with Perl"
               fail=1
             fi

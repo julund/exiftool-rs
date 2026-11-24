@@ -1,0 +1,89 @@
+name: Parity report
+
+# Generate a self-contained HTML report on release tags or on demand. The
+# same output is retained as a workflow artifact and deployed to GitHub Pages.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  PCRE2_SYS_STATIC: "1"
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check that a release tag comes from main
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch --no-tags origin main
+          commit=$(git rev-parse "$GITHUB_SHA^{commit}")
+          git merge-base --is-ancestor "$commit" origin/main || {
+            echo "::error::release tag $GITHUB_REF_NAME does not point to a commit on main"
+            exit 1
+          }
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4  # stable
+        with:
+          toolchain: stable
+
+      - name: Check that the release tag matches the crate version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          crate=$(cargo pkgid -p exiftool-rs)
+          crate="${crate##*[@#]}"
+          test "$tag" = "$crate" || {
+            echo "::error::tag $GITHUB_REF_NAME but Cargo.toml says $crate"
+            exit 1
+          }
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
+
+      - name: Install ExifTool's optional Perl modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --install-recommends --install-suggests \
+            libimage-exiftool-perl
+
+      - name: Generate reports/parity/index.html
+        run: bash scripts/generate_parity_report.sh
+
+      - name: Upload parity report
+        uses: actions/upload-artifact@v7
+        with:
+          name: parity-report
+          path: reports/parity/index.html
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: reports/parity
+
+  deploy:
+    needs: generate
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy parity report
+        id: deployment
+        uses: actions/deploy-pages@v5

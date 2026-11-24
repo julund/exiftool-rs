@@ -22,6 +22,10 @@ The reference documentation is `docs/port/`; read it before changing code:
 The Perl source of the release followed is the reference: `$EXIFTOOL_DIR`,
 by default `../exiftool` next to this repository. Never edit it.
 
+Development happens on the permanent `dev` branch. `main` is release-ready;
+merge `dev` to `main` only for a release, then create the matching `v*` tag on
+that main commit. CI rejects release tags that are not contained in `main`.
+
 ## Layout
 
 ```
@@ -37,26 +41,24 @@ src/
 ├── modules/         # natives: ExifTool's subs ported to Rust, one file per Perl file
 ├── build_info.rs    # what -ver -v lists (from build.rs)
 └── bin/
-    ├── exiftool_rs_gui/  # the GUI (feature gui)
     └── parity/           # the live parity auditor (feature parity)
 data/                # the dumps of ExifTool's modules (scripts/dump_all.sh), embedded
 examples/            # run_t (runs ExifTool's t/*.t: the judges), API examples
 tests/               # integration tests and their fixtures (images, expected outputs)
 scripts/             # the judges, the dump and generator scripts
 fuzz/                # cargo-fuzz targets (own workspace, nightly)
-locales/             # the GUI's texts and the four languages ExifTool lacks
-assets/              # icons (GUI window, Windows resource)
+locales/             # the four languages ExifTool lacks
+assets/              # Windows application icons
 ```
 
 ## Key Commands
 
-Build and test with `-j8` (`-j4` for a release build with the GUI). Every
+Build and test with `-j8`. Every
 perl, run_t or exiftool-rs run of the judges goes under `prlimit --as=4000000000 -- timeout N` (the scripts do
 it). Scratch files go to `target/scratch/`, never to /tmp.
 
 ```bash
 cargo build -j8 --release                         # the CLI, target/release/exiftool-rs
-cargo build -j8 --release --features gui          # and the GUI, exiftool-rs-gui
 EXIFTOOL_DIR=~/dev/exiftool cargo test -j8 --release   # tests (skips those needing ExifTool without it)
 
 # The judges (docs/port/CLI.md), all must pass before a commit:
@@ -65,7 +67,7 @@ bash scripts/compare_images.sh ~/dev/exiftool     # 194 identical, 0 different
 PORT_BIN=$PWD/target/release/exiftool-rs python3 -I scripts/compare_cli.py ~/dev/exiftool
 
 # Windows type-check from Linux, without mingw:
-CC_x86_64_pc_windows_gnu=gcc cargo check -j8 --release --target x86_64-pc-windows-gnu --features gui
+CC_x86_64_pc_windows_gnu=gcc cargo check -j8 --release --target x86_64-pc-windows-gnu
 ```
 
 ## Rules

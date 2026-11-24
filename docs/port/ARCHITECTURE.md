@@ -165,8 +165,6 @@ Only standard work goes to crates:
 - **XML parsing**, where ExifTool uses its own parser only as a tokenizer.
 - **Regex**: the `pcre2` crate, which supports Perl syntax including
   backreferences, on bytes (section 8).
-- **GUI**: the existing egui application, ported to the new API.
-
 The high-level Rust API (`ExifTool`, `Options`, `Tag`, `extract_info`,
 `write_info`...) is kept as a facade over the new engine, so current users
 (Lap, VPin Studio) keep working.
@@ -188,10 +186,9 @@ The high-level Rust API (`ExifTool`, `Options`, `Tag`, `extract_info`,
    stripped and metadata kept. It is compared with Perl tag by tag, in print
    mode, `-n` and `-a -u -G1`.
 4. **Speed**: every gate run times Rust against Perl on the corpus, per
-   format, and a slowdown fails the gate. The comparison page that the CI
-   publishes at each release (`pages.yml`, `scripts/parity_report.py`)
-   shows these timings: Perl time, Rust time and the gain in percent, per
-   format and in total.
+   format, and a slowdown fails the gate. Parity output is rendered by
+   `scripts/parity_report.py` to `reports/parity/index.html`, retained by CI
+   as an artifact and deployed to this fork's GitHub Pages site.
 5. **Engine coverage**: the 3,420 table strings, as described in section 3.
 
 ## 7. Order

@@ -1,10 +1,11 @@
 name: CI
 
-# Nothing builds on a push to `main`: work lands directly on main, so a build
-# per commit would only be noise. The gates run on pull requests, at a tag
-# (before anything is signed or published) and on demand.
+# `dev` is the permanent integration branch and is checked on every push.
+# `main` remains release-ready: releases run only from version tags whose
+# commit has already been merged to main.
 on:
   push:
+    branches: [dev]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -25,6 +26,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4  # stable
@@ -32,14 +35,17 @@ jobs:
           toolchain: stable
           components: clippy
 
-      # First thing in the pipeline: the tag has to match the crate version.
-      # Without it a v0.6.2 tag once published a GitHub release while Cargo.toml
-      # still said 0.6.1 — crates.io never received the version, and since the
-      # publish step tolerates "already exists", the run stayed green and
-      # nobody saw a thing.
+      # First thing in the pipeline: the tag has to match the crate version so
+      # GitHub Releases and their binaries cannot be labelled incorrectly.
       - name: Check that the tag matches the crate version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          git fetch --no-tags origin main
+          commit=$(git rev-parse "$GITHUB_SHA^{commit}")
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::release tag $GITHUB_REF_NAME does not point to a commit on main"
+            exit 1
+          fi
           tag="${GITHUB_REF_NAME#v}"
           # `cargo pkgid` reports the version the published crate actually
           # uses, without assuming where the field sits in Cargo.toml.
@@ -49,7 +55,7 @@ jobs:
             echo "::error::tag $GITHUB_REF_NAME but Cargo.toml says $crate — update Cargo.toml, then re-tag"
             exit 1
           fi
-          echo "tag $GITHUB_REF_NAME <-> Cargo.toml $crate: OK"
+          echo "tag $GITHUB_REF_NAME <-> Cargo.toml $crate, commit on main: OK"
 
       # The ExifTool the tests and the judges download is the one the port
       # follows, whose modules are embedded in data/.
@@ -71,11 +77,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
 
-      - name: Install GUI dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libxdo-dev libglib2.0-dev
-
       # No `cargo fmt --check`: the port is written in its own layout (one
       # statement per line, however long, to follow the Perl line by line)
       # and has never been run through rustfmt, which would rewrite most of
@@ -89,8 +90,8 @@ jobs:
       - name: Clippy (CLI)
         run: cargo clippy --release --all-targets -- -D warnings
 
-      - name: Clippy (GUI, parity auditor)
-        run: cargo clippy --release --features gui,parity --all-targets -- -D warnings
+      - name: Clippy (parity auditor)
+        run: cargo clippy --release --features parity --all-targets -- -D warnings
 
   build:
     needs: lint
@@ -133,17 +134,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
 
-      - name: Install GUI dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libxdo-dev libglib2.0-dev
-
       - name: Build CLI (with icon on Windows)
         run: cargo build --release --target ${{ matrix.target }} --bin exiftool-rs ${{ runner.os == 'Windows' && '--features win-icon' || '' }}
-
-      - name: Build GUI (with icon on Windows)
-        run: cargo build --release --target ${{ matrix.target }} --bin exiftool-rs-gui --features gui${{ runner.os == 'Windows' && ',win-icon' || '' }}
 
       - name: Verify Windows executable versions
         if: runner.os == 'Windows'
@@ -152,7 +144,7 @@ jobs:
           $crateVersion = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
           $parts = $crateVersion.Split('.')
           $productVersion = "$($parts[0]).$($parts[1])"
-          foreach ($name in 'exiftool-rs.exe', 'exiftool-rs-gui.exe') {
+          foreach ($name in 'exiftool-rs.exe') {
             $info = (Get-Item "target/${{ matrix.target }}/release/$name").VersionInfo
             if ($info.FileVersion -ne $crateVersion) {
               throw "$name FileVersion is '$($info.FileVersion)', expected '$crateVersion'"
@@ -198,14 +190,14 @@ jobs:
         env:
           CARGO_PROFILE_RELEASE_LTO: "off"
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
-        run: cargo test --release --features gui
+        run: cargo test --release
 
       - name: Run unit tests (macOS, Windows)
         if: runner.os != 'Linux' && matrix.target != 'x86_64-apple-darwin'
         env:
           CARGO_PROFILE_RELEASE_LTO: "off"
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
-        run: cargo test --release --features gui --lib --bins
+        run: cargo test --release --lib --bins
 
       - name: Read the test images
         if: matrix.target != 'x86_64-apple-darwin'
@@ -261,22 +253,7 @@ jobs:
           "$bin" -charset filename=utf8 -o 'wïn/nëw/' "$f"
           test -f 'wïn/nëw/Ünïcödé 日本.jpg'
 
-      # What crates.io will get: the packaged sources build on their own
-      # (`cargo package` builds them), and the .crate stays under the 10 MB
-      # crates.io accepts.
-      - name: Package the crate
-        if: matrix.label == 'linux-x86_64'
-        env:
-          CARGO_PROFILE_RELEASE_LTO: "off"
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
-        run: |
-          cargo package --locked
-          size=$(stat -c %s target/package/exiftool-rs-*.crate)
-          echo "exiftool-rs.crate: $size bytes"
-          test "$size" -lt 10000000 || { echo "::error::the .crate is $size bytes, over crates.io's 10 MB"; exit 1; }
-
-      # --- Packaging (unsigned binaries; Apple signing happens further down,
-      # in a job of its own behind the `signing` environment). ---
+      # --- Packaging (this fork publishes unsigned binaries). ---
 
       # --- Package CLI ---
       - name: Package CLI (Unix)
@@ -293,22 +270,6 @@ jobs:
         with:
           name: exiftool-rs-cli-${{ matrix.label }}
           path: exiftool-rs-cli-${{ matrix.label }}.*
-
-      # --- Package GUI ---
-      - name: Package GUI (Unix)
-        if: runner.os != 'Windows'
-        run: tar czf exiftool-rs-gui-${{ matrix.label }}.tar.gz -C target/${{ matrix.target }}/release exiftool-rs-gui
-
-      - name: Package GUI (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path target/${{ matrix.target }}/release/exiftool-rs-gui.exe -DestinationPath exiftool-rs-gui-${{ matrix.label }}.zip
-
-      - name: Upload GUI artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-gui-${{ matrix.label }}
-          path: exiftool-rs-gui-${{ matrix.label }}.*
 
   # The judges, ahead of any signing: the port against the pinned Perl
   # ExifTool (EXIFTOOL_VERSION, NOT the latest — an upstream tag running
@@ -400,276 +361,14 @@ jobs:
             exit 1
           fi
 
-  # Apple signing + notarization of the CLI and the GUI. Behind `signing` for the
-  # same reason as Windows: the Apple secrets are environment secrets now (unreadable
-  # from the `build` job, which declares no environment), and a Developer ID signature
-  # commits the owner's identity — it must never go out without explicit approval.
-  sign-apple:
-    needs: [build, parity]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: macos-latest
-    environment: signing
-    steps:
-      - name: Download the macOS artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: exiftool-rs-*-macos-*
-          path: dl
-
-      - name: Import Apple Developer ID certificate
-        env:
-          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import $RUNNER_TEMP/certificate.p12 \
-            -k "$KEYCHAIN_PATH" \
-            -P "$APPLE_CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-      - name: Sign & notarize the macOS binaries
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          # Submit and poll with timeout + retry (3 attempts, 5/15/45 min backoff)
-          notarize_once() {
-            local zip="$1" label="$2" timeout="$3"
-
-            local output
-            output=$(xcrun notarytool submit "$zip" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_ID_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --verbose 2>&1)
-            echo "$output"
-            local sub_id
-            sub_id=$(echo "$output" | awk '/id:/{print $2; exit}')
-            [ -n "$sub_id" ] || { echo "$label: failed to get submission ID"; return 1; }
-            echo "$label: submitted (id: $sub_id)"
-
-            local deadline=$((SECONDS + timeout))
-            while [ $SECONDS -lt $deadline ]; do
-              sleep 30
-              local info
-              info=$(xcrun notarytool info "$sub_id" \
-                --apple-id "$APPLE_ID" \
-                --password "$APPLE_ID_PASSWORD" \
-                --team-id "$APPLE_TEAM_ID" 2>&1) || { echo "$label: network error, retrying poll..."; continue; }
-
-              local status
-              status=$(echo "$info" | awk '/status:/{print $2; exit}')
-              echo "$label: $status"
-
-              case "$status" in
-                Accepted) return 0 ;;
-                Invalid|Rejected)
-                  xcrun notarytool log "$sub_id" \
-                    --apple-id "$APPLE_ID" \
-                    --password "$APPLE_ID_PASSWORD" \
-                    --team-id "$APPLE_TEAM_ID" 2>&1 || true
-                  return 1 ;;
-              esac
-            done
-            echo "$label: timed out after $((timeout / 60)) minutes"
-            return 2  # timeout, retryable
-          }
-
-          notarize() {
-            local zip="$1" label="$2"
-            local backoffs=(300 900 2700)  # 5 / 15 / 45 minutes
-            for i in 0 1 2; do
-              echo "$label: attempt $((i + 1))/3"
-              notarize_once "$zip" "$label" "${backoffs[$i]}" && return 0
-              local rc=$?
-              [ $rc -eq 2 ] || return $rc  # only retry on timeout (rc=2)
-              [ $i -lt 2 ] && echo "$label: retrying after timeout..."
-            done
-            return 1
-          }
-
-          SIGN_ID="Developer ID Application: Sylvain Gargasson ($APPLE_TEAM_ID)"
-
-          # The four macOS artifacts: CLI + GUI, for each architecture. The
-          # binary's name inside the archive depends on the variant, not the label.
-          artifacts=(
-            "exiftool-rs-cli-macos-arm64:exiftool-rs"
-            "exiftool-rs-gui-macos-arm64:exiftool-rs-gui"
-            "exiftool-rs-cli-macos-x86_64:exiftool-rs"
-            "exiftool-rs-gui-macos-x86_64:exiftool-rs-gui"
-          )
-
-          # 1) Sign and verify, then zip for notarization.
-          for entry in "${artifacts[@]}"; do
-            art="${entry%%:*}"
-            bin="${entry##*:}"
-            echo "::group::sign $art"
-            work="$RUNNER_TEMP/$art"
-            mkdir -p "$work"
-            tar xzf "dl/$art/$art.tar.gz" -C "$work"
-
-            codesign --force --options runtime \
-              --sign "$SIGN_ID" \
-              --timestamp "$work/$bin"
-            codesign --verify --strict --verbose=2 "$work/$bin"
-
-            ditto -c -k --keepParent "$work/$bin" "$RUNNER_TEMP/$art.zip"
-            echo "::endgroup::"
-          done
-
-          # 2) Notarize in parallel (each submission spends minutes waiting on
-          # Apple), then collect the exit codes one by one.
-          pids=()
-          for entry in "${artifacts[@]}"; do
-            art="${entry%%:*}"
-            notarize "$RUNNER_TEMP/$art.zip" "$art" &
-            pids+=("$!")
-          done
-          failed=0
-          for i in "${!pids[@]}"; do
-            wait "${pids[$i]}" || { echo "::error::${artifacts[$i]%%:*}: notarization failed"; failed=1; }
-          done
-          [ $failed -eq 0 ] || exit 1
-
-          # 3) Repackage the signed binaries under their original names.
-          for entry in "${artifacts[@]}"; do
-            art="${entry%%:*}"
-            bin="${entry##*:}"
-            tar czf "$art.tar.gz" -C "$RUNNER_TEMP/$art" "$bin"
-          done
-
-      - name: Re-upload the signed CLI arm64 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-cli-macos-arm64
-          path: exiftool-rs-cli-macos-arm64.tar.gz
-          overwrite: true
-
-      - name: Re-upload the signed GUI arm64 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-gui-macos-arm64
-          path: exiftool-rs-gui-macos-arm64.tar.gz
-          overwrite: true
-
-      - name: Re-upload the signed CLI x86_64 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-cli-macos-x86_64
-          path: exiftool-rs-cli-macos-x86_64.tar.gz
-          overwrite: true
-
-      - name: Re-upload the signed GUI x86_64 artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-gui-macos-x86_64
-          path: exiftool-rs-gui-macos-x86_64.tar.gz
-          overwrite: true
-
-  # Authenticode-sign the Windows CLI + GUI with ssign — the Linux runner signs
-  # them via Certum (no Windows, no vendor stack). Gated by the `signing`
-  # environment (owner approval); the release below needs it.
-  sign-windows:
-    needs: [build, parity]
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
-    environment: signing
-    steps:
-      - name: Install ssign (prebuilt binary from the latest release)
-        run: |
-          curl -fsSL https://github.com/Le-Syl21/ssign/releases/latest/download/ssign-linux-x86_64.tar.gz | tar xz
-          sudo install -m755 ssign /usr/local/bin/ssign
-
-      - name: Download CLI artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: exiftool-rs-cli-windows-x86_64
-          path: dl
-
-      - name: Download GUI artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: exiftool-rs-gui-windows-x86_64
-          path: dl
-
-      - name: Sign CLI + GUI with ssign (via Certum)
-        env:
-          CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
-          CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
-        run: |
-          cd dl
-          unzip -o exiftool-rs-cli-windows-x86_64.zip
-          unzip -o exiftool-rs-gui-windows-x86_64.zip
-          ssign --verbose \
-            -n "exiftool-rs" -u "https://github.com/${{ github.repository }}" \
-            exiftool-rs.exe exiftool-rs-gui.exe
-          sudo apt-get update -qq && sudo apt-get install -y osslsigncode
-          # Check the facts, not the presence of a sentence. "Calculated message
-          # digest" appears just as much when the digest does NOT match, and says
-          # nothing about timestamping: this check therefore used to let through a
-          # signature Windows would have rejected, and untimestamped binaries —
-          # invalid the moment the certificate expires.
-          verify_signature() {
-            local out
-            out=$(osslsigncode verify "$1" 2>&1) || true
-            echo "$out"
-            if echo "$out" | grep -q "MISMATCH"; then
-              echo "::error::$1: invalid Authenticode digest (Windows would see it as tampered with)"
-              return 1
-            fi
-            if echo "$out" | grep -q "Timestamp is not available"; then
-              echo "::error::$1: signature is not timestamped (invalid as soon as the certificate expires)"
-              return 1
-            fi
-            if ! echo "$out" | grep -q "Signature verification: ok"; then
-              echo "::error::$1: signature verification failed"
-              return 1
-            fi
-          }
-          for f in exiftool-rs.exe exiftool-rs-gui.exe; do
-            verify_signature "$f"
-          done
-          rm -f exiftool-rs-cli-windows-x86_64.zip exiftool-rs-gui-windows-x86_64.zip
-          zip -j exiftool-rs-cli-windows-x86_64.zip exiftool-rs.exe
-          zip -j exiftool-rs-gui-windows-x86_64.zip exiftool-rs-gui.exe
-
-      - name: Re-upload signed CLI
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-cli-windows-x86_64
-          path: dl/exiftool-rs-cli-windows-x86_64.zip
-          overwrite: true
-
-      - name: Re-upload signed GUI
-        uses: actions/upload-artifact@v7
-        with:
-          name: exiftool-rs-gui-windows-x86_64
-          path: dl/exiftool-rs-gui-windows-x86_64.zip
-          overwrite: true
-
   release:
-    # `parity` is named here as well as in the signing jobs: it is the gate
-    # that must stop a release, and inheriting it through them would let a
-    # change to the signing chain drop it without anyone noticing.
-    needs: [build, parity, sign-windows, sign-apple]
+    needs: [build, parity]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
 
     steps:
-      # Download outside the repo working tree so `cargo publish` (after the
-      # checkout below) sees a clean tree.
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -682,41 +381,3 @@ jobs:
           # Pre-release tags (v*-rc/-beta) are marked "pre-release" in the GitHub UI.
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: ${{ runner.temp }}/artifacts/**/*
-
-  # crates.io publish — the one irreversible step in the pipeline ("yank" deletes
-  # nothing): it therefore runs AFTER the GitHub release, which can be revoked, and
-  # only on final tags. Trusted Publishing: no long-lived secret, GitHub attests the
-  # workflow's identity (repo + file + environment) and crates.io issues an ephemeral
-  # token, revoked when the job ends.
-  publish-crates:
-    needs: [build, release]
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
-    runs-on: ubuntu-24.04
-    environment: crates-io
-    permissions:
-      contents: read
-      id-token: write        # needed to request the OIDC token from GitHub
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4  # stable
-        with:
-          toolchain: stable
-
-      - name: Get a temporary crates.io token (OIDC)
-        id: auth
-        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9  # v1.0.6
-
-      - name: Publish to crates.io
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: |
-          if cargo publish 2>&1 | tee /tmp/publish.log; then
-            echo "published"
-          elif grep -q "already exists" /tmp/publish.log; then
-            echo "this version is already on crates.io — nothing to do"
-          else
-            exit 1
-          fi

@@ -85,7 +85,6 @@ def render(rows, rs_ver, et_ver):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>exiftool-rs timings</title>
 <meta name="description" content="Every command line of exiftool-rs's judges, run by Perl ExifTool {esc(et_ver)} and by exiftool-rs {esc(rs_ver)}: the time each takes, case by case.">
-<link rel="canonical" href="https://le-syl21.github.io/exiftool-rs/timings.html">
 <style>{CSS}{EXTRA_CSS}</style></head><body>
 <nav class="top"><a href="./">Parity report</a> · Timings</nav>
 <header class="hero">
@@ -142,12 +141,15 @@ def render(rows, rs_ver, et_ver):
     w("<script>function o(){var e=location.hash&&document.getElementById(location.hash.slice(1));"
       "if(e&&e.tagName==='DETAILS')e.open=true}addEventListener('hashchange',o);o()</script>")
     w("</main><footer>Generated from <code>compare_cli.py</code> (CLI_TIMES) · "
-      "<a href=\"https://github.com/Le-Syl21/exiftool-rs\">Le-Syl21/exiftool-rs</a></footer>"
+      "<a href=\"https://github.com/julund/exiftool-rs\">julund/exiftool-rs</a> · "
+      "based on <a href=\"https://github.com/Le-Syl21/exiftool-rs\">Le-Syl21/exiftool-rs</a></footer>"
       "</body></html>")
     return "".join(out)
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
     ap.add_argument("tsv")
     ap.add_argument("--rs", default="")

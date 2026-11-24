@@ -328,20 +328,6 @@ replaced. With `fresh_interpreter`, calls run on the caller's thread, in
 parallel. Turning `use_mwg` off after a call with it replaces the
 interpreter (MWG cannot be unloaded).
 
-## The GUI
-
-`exiftool-rs-gui` (`cargo build --release --features gui`, giving
-`target/release/exiftool-rs-gui`; `src/bin/exiftool_rs_gui/`) is the root crate's
-src/gui.rs on the facade, with the same panels, strings and behaviour. Its
-own strings are the `_ui.*` entries of the root crate's locales
-(`data/gui_text.tsv`, written by `scripts/gen_extra_langs.pl`); the tag
-descriptions and values are ExifTool's, read with `Options::lang`, where
-the root crate looked them up in its own tables. So changing the language
-reads the file again, the Copy button copies the values as shown (in the
-language), and an edit starts from, and is saved as, the value in the
-language. The model is tested without a window (`cargo test --features
-gui`).
-
 ## Differences with the root crate
 
 The root crate had its own readers and writers; the facade has ExifTool's.

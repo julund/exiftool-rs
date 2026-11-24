@@ -10,16 +10,10 @@ updates:
   # per major, so a breaking change never holds the rest of them hostage.
   - package-ecosystem: cargo
     directory: /
+    target-branch: dev
     schedule:
       interval: monthly
     groups:
-      # egui and its satellites move in lockstep: eframe, egui_glow, egui-winit
-      # and egui_inspection each require an exact egui minor, so a PR bumping
-      # one of them alone cannot build. One group, one PR — and it takes every
-      # update type, because for a 0.x crate Dependabot calls 0.36 -> 0.37 a
-      # *minor* update while Cargo treats it as breaking.
-      egui:
-        patterns: ["egui", "egui-*", "egui_*", "eframe"]
       # The RustCrypto hashes share digest: sha1, sha2 and md-5 0.11 only build
       # together (Digest::MD5 and Digest::SHA), so they come as one PR, every
       # update type included (0.10 -> 0.11 is breaking).
@@ -34,6 +28,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: monthly
     # Une seule PR groupée plutôt qu'une par action.

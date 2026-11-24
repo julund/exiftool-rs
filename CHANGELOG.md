@@ -6,7 +6,7 @@ All notable changes to `exiftool-rs` are documented here.
 
 ### Fixed
 
-- Windows CLI and GUI executables now carry file version `13.61.1` and product
+- Windows CLI executables now carry file version `13.61.1` and product
   version `13.61`, matching the exiftool-rs release and the mirrored ExifTool
   release respectively.
 
@@ -14,6 +14,18 @@ All notable changes to `exiftool-rs` are documented here.
 
 - Documented the version-tag release flow; pushing a matching `v13.61.1` tag
   runs the release gates and creates a GitHub Release with the built artifacts.
+- Removed the optional GUI, its accessibility stack and GUI release artifacts;
+  this fork now builds and ships the CLI only.
+- Optimized release builds for size (`opt-level = "s"`) while retaining fat
+  LTO, symbol stripping and panic unwinding required by the Rust API.
+- Reframed the repository as the `julund/exiftool-rs` fork while preserving
+  attribution to Le-Syl21's original project; removed upstream package-registry,
+  documentation-hosting, community and signing assumptions.
+- Generates the self-contained parity report at `reports/parity/index.html`,
+  retains it as a CI artifact and deploys it to this fork's GitHub Pages site.
+- Established `dev` as the permanent integration branch. CI and Dependabot
+  target `dev`; releases require a version-matching `v*` tag whose commit has
+  already been merged to `main`.
 
 ## [13.61.0] - 2026-11-13
 

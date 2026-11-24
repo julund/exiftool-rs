@@ -18,8 +18,8 @@ name: parity
 # before deciding to port it.
 #
 # The blocking copy of this check is the `parity` job in ci.yml, which runs on
-# every tag and which the release and the crates.io publish depend on. A red
-# parity there stops the release; nothing gets published past it.
+# every tag and which the GitHub Release depends on. A red parity there stops
+# the release; no binaries are published past it.
 on:
   workflow_dispatch:
     inputs:

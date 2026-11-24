@@ -13,8 +13,7 @@
 # Description and PrintConv), and dump_module.pl dumps it to
 # data/Lang_LANG.pld. Writes data/extra_langs.rs, the index of these dumps
 # for the runtime (which keeps them apart from data/index.rs, written by
-# dump_all.sh), and data/gui_text.tsv, the `_ui.*` strings of every locale
-# for the GUI.
+# dump_all.sh).
 use strict;
 use warnings;
 
@@ -130,18 +129,3 @@ print $idx "pub static EXTRA_MODULES: &[(&str, &[u8])] = &[\n";
 print $idx "    (\"Image::ExifTool::Lang::$$_[0]\", include_bytes!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/data/Lang_$$_[0].pld\"))),\n" foreach @extra;
 print $idx "];\n";
 close $idx;
-
-# the GUI's strings: language, key (without `_ui.`), text
-opendir my $dh, $locales or die "$locales: $!\n";
-my @ymls = sort grep /\.yml$/, readdir $dh;
-closedir $dh;
-open my $ui, '>', "$root/data/gui_text.tsv" or die "gui_text.tsv: $!\n";
-foreach my $yml (@ymls) {
-    (my $lang = $yml) =~ s/\.yml$//;
-    my $map = read_yaml("$locales/$yml");
-    foreach my $key (sort grep /^_ui\./, keys %$map) {
-        (my $k = $key) =~ s/^_ui\.//;
-        print $ui "$lang\t$k\t$$map{$key}\n";
-    }
-}
-close $ui;

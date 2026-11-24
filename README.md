@@ -1,15 +1,19 @@
 # exiftool-rs
 
-[![Crates.io](https://img.shields.io/crates/v/exiftool-rs.svg)](https://crates.io/crates/exiftool-rs)
-[![Documentation](https://docs.rs/exiftool-rs/badge.svg)](https://docs.rs/exiftool-rs)
-[![Parity](https://img.shields.io/badge/ExifTool%2013.61-parity%20report-1f8a4c)](https://le-syl21.github.io/exiftool-rs/)
+[![Parity report](https://github.com/julund/exiftool-rs/actions/workflows/parity-report.yml/badge.svg)](https://julund.github.io/exiftool-rs/)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-Le--Syl21%20Tools-5865F2?logo=discord&logoColor=white)](https://discord.gg/T37DYHmt2j)
-[![Accessibility](https://img.shields.io/badge/accessibility-screen%20readers%20%C2%B7%20keyboard%20%C2%B7%20WCAG%20AA%20contrast-2b6cb0)](#accessibility)
 
-A faithful Rust port of [ExifTool](https://exiftool.org/) 13.61 — read, write, and edit metadata in image, audio, video, and document files. ExifTool's own modules are embedded in the program and run by a Perl interpreter written in Rust, with ExifTool's subs and the `exiftool` application ported to Rust one by one: the output is ExifTool's, and no Perl installation is needed. The C libraries it needs (PCRE2, zlib) are built in.
+A CLI-focused fork of
+[Le-Syl21/exiftool-rs](https://github.com/Le-Syl21/exiftool-rs), a faithful
+Rust port of [ExifTool](https://exiftool.org/) 13.61. It reads, writes and
+edits metadata in image, audio, video and document files without requiring a
+Perl installation.
 
-![Screenshot](assets/screenshot.png)
+The fork intentionally differs from upstream: it ships only the CLI, removes
+the egui/accessibility stack, optimizes release builds for executable size,
+and publishes binaries through this repository's GitHub Releases. ExifTool's
+embedded modules, Rust interpreter and original port remain upstream's work;
+see [Attribution](#attribution).
 
 ## Versioning
 
@@ -19,24 +23,49 @@ Rust-port or packaging fix on that baseline is `13.61.1`. Moving to ExifTool
 13.62 resets the revision, producing `13.62.0`. The public Rust API remains
 compatible throughout an ExifTool major series.
 
-Use `exiftool-rs = "13.61"` to accept compatible 13.x updates. Programs that
-need the exact metadata behaviour of one port release should pin it, for
-example `exiftool-rs = "=13.61.1"`.
+This fork is distributed from GitHub rather than a package registry. Rust
+consumers can pin this repository directly:
+
+```toml
+exiftool-rs = { git = "https://github.com/julund/exiftool-rs", tag = "v13.61.1" }
+```
+
+## Development flow
+
+`dev` is the permanent working branch. All regular changes and dependency
+updates land there; CI runs on every push to `dev`. `main` is kept in a
+release-ready state and receives code only when the current `dev` revision is
+ready to ship.
+
+```bash
+git switch dev
+# work, test and commit
+git push -u origin dev
+```
 
 ## Releasing
 
-Releases are version-tag driven. After updating `Cargo.toml`, `Cargo.lock` and
-the changelog on `main`, create and push an annotated `v<crate-version>` tag,
-for example `git tag -a v13.61.1 -m "exiftool-rs 13.61.1"` followed by
-`git push origin main v13.61.1`. CI requires the tag to match the crate version,
-builds and signs the artifacts, and creates the corresponding GitHub Release.
-Final (non-prerelease) tags are then published to crates.io.
+Merge the ready `dev` revision into `main`, push `main`, then tag that exact
+release commit with the crate version:
 
-## Community & support
+```bash
+git switch main
+git pull --ff-only origin main
+git merge --ff-only dev
+git push origin main
 
-Questions, bug reports, beta testing, or just want to chat? Join the Discord:
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+git tag -a "v$version" -m "exiftool-rs $version"
+git push origin "v$version"
 
-[![Discord](https://img.shields.io/badge/Discord-Le--Syl21%20Tools-5865F2?logo=discord&logoColor=white)](https://discord.gg/T37DYHmt2j)
+git switch dev
+git merge --ff-only main
+```
+
+CI rejects a `v*` tag unless its version matches `Cargo.toml` and its commit is
+already on `main`. A valid tag builds the CLI artifacts, creates the GitHub
+Release and publishes the parity report. Release binaries are currently
+unsigned.
 
 ## Features
 
@@ -51,8 +80,6 @@ Questions, bug reports, beta testing, or just want to chat? Join the Discord:
   [docs/port/API.md](docs/port/API.md))
 - **Writers for what ExifTool only reads**: MP3/AIFF ID3, FLAC, Ogg, Opus
   and Matroska (`extra-writers` feature, on by default, API only)
-- **Optional GUI** in 23 languages: ExifTool's 18 and Arabic, Bengali, Hindi
-  and Portuguese
 
 ## How it compares to ExifTool
 
@@ -66,15 +93,6 @@ exiftool-rs runs ExifTool's own code, so what it reads, prints and writes is Exi
 | Tag tables | Perl hashes, loaded at runtime | The same, dumped from ExifTool's modules and embedded (`data/`) |
 | `PrintConv` / `ValueConv` | Perl code, `eval`-uated at runtime | The same code, `eval`-uated by the interpreter |
 | Runtime dependencies | Perl + CPAN modules | None: the optional Perl modules ExifTool uses are provided by the program |
-
-### GUI
-
-| | ExifTool (Perl) | exiftool-rs |
-|---|---|---|
-| Bundled GUI | None — CLI only | Yes — `exiftool-rs-gui` |
-| Pseudo-official GUI | [ExifToolGUI](https://exiftool.org/gui/) — third-party, Windows-only, drives the CLI underneath | Native [egui](https://github.com/emilk/egui), single binary, cross-platform |
-| Editing | via the third-party GUI | Double-click any writable tag, save back to file |
-| Languages in the GUI | n/a | 23, descriptions and values localized |
 
 ### Languages
 
@@ -109,7 +127,6 @@ for tag in &tags {
 
 | Feature | Description |
 |---------|-------------|
-| `gui` | Enable the graphical interface (`exiftool-rs-gui` binary) |
 | `extra-writers` | Writers for the types ExifTool reads and does not write (default) |
 | `rusty-alloc` | rusty_alloc as the binaries' allocator (default; a library user can leave it out) |
 | `win-icon` | Embed Windows application icon in the binary (CLI builds only) |
@@ -119,11 +136,9 @@ for tag in &tags {
 ## CLI Usage
 
 ```bash
-# Install (CLI only)
-cargo install exiftool-rs
-
-# Install with GUI
-cargo install exiftool-rs --features gui
+# Install this fork's CLI from a version tag
+cargo install --git https://github.com/julund/exiftool-rs \
+  --tag v13.61.1 --locked --bin exiftool-rs
 
 # Read metadata
 exiftool-rs photo.jpg
@@ -147,48 +162,7 @@ exiftool-rs -n photo.jpg
 exiftool-rs -ee video.mp4
 ```
 
-## GUI
-
-exiftool-rs includes an optional graphical interface built with [egui](https://github.com/emilk/egui).
-
-```bash
-# Install with GUI support
-cargo install exiftool-rs --features gui
-
-# Launch the GUI
-exiftool-rs-gui
-
-# Or with a specific language
-exiftool-rs-gui -lang fr
-```
-
-**Features:**
-- Open files or folders, navigate with arrow keys
-- View all metadata grouped by category
-- Double-click any writable tag to edit it
-- Copy all metadata to clipboard
-- Save edits back to the file
-- Light, dark or system theme, kept in the settings
-- 23 languages supported (CJK, Arabic, Hindi, Bengali fonts included via [noto-fonts-dl](https://crates.io/crates/noto-fonts-dl))
-
-### Accessibility
-
-The GUI follows the usual accessibility recommendations; it has not been
-tested end to end with a screen reader or a braille display, and reports
-from people who use them are welcome.
-
-- **Screen readers**: every control and every metadata row has an accessible
-  name and state (a value reads as its description, its value, and whether it
-  is writable or edited), exposed through [AccessKit](https://accesskit.dev/)
-  to Narrator and NVDA on Windows, VoiceOver on macOS and Orca on Linux. A
-  test walks the accessibility tree and fails on an unnamed control.
-- **Keyboard**: everything is reachable with Tab and Enter; Ctrl+O (⌘O) opens,
-  Ctrl+S (⌘S) saves, Alt+← and Alt+→ move between files (or ←, →, Home and
-  End when no field has the focus).
-- **Contrast**: every text and control color of the light and dark themes
-  meets WCAG 2 AA against its background (4.5:1), checked by the tests.
-
-### Supported Languages (23)
+### Supported languages (23)
 
 | Code | Language | Code | Language | Code | Language |
 |------|----------|------|----------|------|----------|
@@ -203,7 +177,7 @@ from people who use them are welcome.
 
 Tag descriptions and PrintConv values are ExifTool's own translations (e.g. `Orientation` reads `Horizontale (normale)` under `-lang fr`), English where ExifTool has none; the four languages ExifTool does not have come from `locales/`.
 
-### Platform Notes
+### Platform notes
 
 | OS | Icon in binary | Notes |
 |----|---------------|-------|
@@ -234,7 +208,7 @@ Every option of ExifTool 13.61's `exiftool` application (`exiftool-rs -h`; [docs
 | `-TAG=` | Delete tag |
 | `-overwrite_original` | Overwrite without backup |
 | `-stay_open True` | Keep running, read commands from stdin |
-| `-lang LANG` | Set language (GUI and tag descriptions) |
+| `-lang LANG` | Set language for tag descriptions and values |
 | `-v` | Verbose output |
 | `-htmlDump` | HTML hex dump of file structure |
 | `-validate` | Validate metadata |
@@ -264,14 +238,16 @@ PORT_BIN=$PWD/target/release/exiftool-rs python3 -I scripts/compare_cli.py /path
 `src/bin/parity` (feature `parity`, needs `perl`, plus `curl` and `tar` to
 fetch the pinned ExifTool release into `target/parity/`) runs exiftool-rs and
 Perl ExifTool 13.61 over the corpus in `tests/images/` and compares them. The
-[published report](https://le-syl21.github.io/exiftool-rs/) is generated from
-it by `.github/workflows/pages.yml` on every release:
+report is generated locally at `reports/parity/index.html`; CI runs the same
+command, uploads the directory as a downloadable workflow artifact, and
+publishes it at the [browser-readable parity report](https://julund.github.io/exiftool-rs/).
+Build history remains available in the
+[Parity report workflow runs](https://github.com/julund/exiftool-rs/actions/workflows/parity-report.yml).
 
 ```bash
-cargo run --release --features parity --bin parity                 # gate: fail on a new read delta or write failure
-cargo run --release --features parity --bin parity -- --update     # refresh both baselines
-cargo run --release --features parity --bin parity -- --dump \
-  | python3 scripts/parity_report.py > index.html                   # the report page
+cargo run --release --features parity --bin parity              # gate: fail on a new read delta or write failure
+cargo run --release --features parity --bin parity -- --update  # refresh both baselines
+bash scripts/generate_parity_report.sh                           # reports/parity/index.html
 ```
 
 The report has two parts.
@@ -305,14 +281,11 @@ checked at start (`Archive::Zip`, `IO::Compress::Brotli`,
 ## Building
 
 ```bash
-git clone https://github.com/Le-Syl21/exiftool-rs
+git clone https://github.com/julund/exiftool-rs
 cd exiftool-rs
 
 # CLI only
 cargo build --release
-
-# CLI + GUI
-cargo build --release --features gui
 
 # With Windows icon embedded in the .exe
 cargo build --release --features win-icon
@@ -321,23 +294,24 @@ cargo build --release --features win-icon
 A C compiler is needed: PCRE2 (Perl's regular expressions) and zlib (so that
 compressed output is byte for byte Perl's) are built into the program.
 
-The `gui` feature is optional and not included by default. Without it, the GUI dependencies (egui, eframe, image, rfd, noto-fonts-dl) are not downloaded or compiled.
-
 The `win-icon` feature embeds an icon into the Windows `.exe` via `winres`. It is disabled by default to avoid conflicts with frameworks like Tauri that manage their own Windows resources.
 
 ## License
 
 GPL-3.0-or-later. Perl ExifTool, whose modules are embedded (`data/`), is free software under the same terms as Perl itself (GPL or Artistic License).
 
-## Authors
+## Maintainer
 
-- **Sylvain** ([@Le-Syl21](https://github.com/Le-Syl21)) — Project creator
-- **Claude** (Anthropic) — Implementation
+- **Julian** ([@julund](https://github.com/julund)) — fork maintainer
 
-## Acknowledgements
+## Attribution
 
-Based on [ExifTool](https://exiftool.org/) by Phil Harvey.
-Its modules, embedded in `data/`, are run by the port's interpreter.
+- [Sylvain Gargasson](https://github.com/Le-Syl21) created
+  [Le-Syl21/exiftool-rs](https://github.com/Le-Syl21/exiftool-rs) and led the
+  original Rust implementation, with implementation work by Claude
+  (Anthropic). This fork preserves that authorship and license.
+- [ExifTool](https://exiftool.org/) is by Phil Harvey. Its modules, embedded
+  in `data/`, are run by the port's interpreter.
 
 Thanks to [RAW-Samples.ch](https://rawsamples.ch/), whose RAW files (metadata
 only) make up our [`rawsamples` test corpus](tests/corpus/README.md), and to

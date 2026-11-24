@@ -28,6 +28,7 @@ CLI_TIMES=FILE appends each case's times to FILE (case file, number, kind,
 arguments, Perl's seconds, the port's, identical), for
 scripts/timing_report.py.
 """
+import difflib
 import hashlib
 import os
 import re
@@ -244,6 +245,16 @@ def main():
             same += 1
         else:
             bad.append(f"{n}: {args}")
+            with open(os.path.join(work, str(n), "perl.txt")) as perl_result, \
+                 open(os.path.join(work, str(n), "port.txt")) as port_result:
+                for line in difflib.unified_diff(
+                    perl_result.read().splitlines(),
+                    port_result.read().splitlines(),
+                    fromfile="perl",
+                    tofile="port",
+                    lineterm="",
+                ):
+                    print(line)
         if times:
             times.write(f"{case_file}\t{n}\t{kind}\t{args}\t{res['perl'][4]:.4f}\t{res['port'][4]:.4f}\t{int(identical)}\n")
     print(f"{same} identical, {len(bad)} different")

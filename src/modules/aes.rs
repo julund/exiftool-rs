@@ -367,9 +367,9 @@ fn inv_cipher_st(s: &mut St, input: Vec<u64>) -> Value {
     let mut out: Vec<u64> = Vec::new();
 
     // copy the input CipherText to state array
-    for i in 0..4 {
-        for j in 0..4 {
-            s.state[j][i] = at(&input, (i * 4 + j) as i64);
+    for (j, row) in s.state.iter_mut().enumerate() {
+        for (i, cell) in row.iter_mut().enumerate() {
+            *cell = at(&input, (i * 4 + j) as i64);
         }
     }
 

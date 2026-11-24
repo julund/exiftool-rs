@@ -2,6 +2,27 @@
 
 All notable changes to `exiftool-rs` are documented here.
 
+## [13.61.2] - 2026-11-24
+
+### Changed
+
+- A release publishes bare files instead of archives: one program per
+  platform, `exiftool-rs-<version>-<target>` (`.exe` on Windows), with
+  `exiftool-rs-<version>-NOTICES.txt` and `exiftool-rs-<version>-SHA256SUMS.txt`
+  beside them, so a program that runs exiftool-rs can download and check them
+  as they are. Releases are immutable.
+
+### Added
+
+- `scripts/notices.sh` writes the licences of what's built into the program:
+  exiftool-rs' GPL, ExifTool's terms, PCRE2 and its JIT, zlib and every Rust
+  crate linked on any platform. Each release carries them as its NOTICES.
+
+### Fixed
+
+- `LICENSE` has the GNU GPL v3's full text, which every copy of the program
+  must come with, where it had only the short notice.
+
 ## [13.61.1] - 2026-11-24
 
 ### Fixed

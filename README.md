@@ -27,7 +27,7 @@ This fork is distributed from GitHub rather than a package registry. Rust
 consumers can pin this repository directly:
 
 ```toml
-exiftool-rs = { git = "https://github.com/julund/exiftool-rs", tag = "v13.61.1" }
+exiftool-rs = { git = "https://github.com/julund/exiftool-rs", tag = "v13.61.2" }
 ```
 
 ## Development flow
@@ -63,9 +63,14 @@ git merge --ff-only main
 ```
 
 CI rejects a `v*` tag unless its version matches `Cargo.toml` and its commit is
-already on `main`. A valid tag builds the CLI artifacts, creates the GitHub
-Release and publishes the parity report. Release binaries are currently
-unsigned.
+already on `main`. A valid tag builds the CLI, creates the GitHub Release and
+publishes the parity report. A release has bare files, so a program that runs
+exiftool-rs can download and check them as they are: one per platform,
+`exiftool-rs-<version>-<target>` (`.exe` on Windows), the licences of what's
+built into them, `exiftool-rs-<version>-NOTICES.txt` (`scripts/notices.sh`),
+and their sha256 sums, `exiftool-rs-<version>-SHA256SUMS.txt`. Releases are
+immutable: a published tag and its files never change. Release binaries are
+currently unsigned.
 
 ## Features
 
@@ -138,7 +143,7 @@ for tag in &tags {
 ```bash
 # Install this fork's CLI from a version tag
 cargo install --git https://github.com/julund/exiftool-rs \
-  --tag v13.61.1 --locked --bin exiftool-rs
+  --tag v13.61.2 --locked --bin exiftool-rs
 
 # Read metadata
 exiftool-rs photo.jpg

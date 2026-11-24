@@ -253,23 +253,17 @@ jobs:
           "$bin" -charset filename=utf8 -o 'wïn/nëw/' "$f"
           test -f 'wïn/nëw/Ünïcödé 日本.jpg'
 
-      # --- Packaging (this fork publishes unsigned binaries). ---
-
-      # --- Package CLI ---
-      - name: Package CLI (Unix)
-        if: runner.os != 'Windows'
-        run: tar czf exiftool-rs-cli-${{ matrix.label }}.tar.gz -C target/${{ matrix.target }}/release exiftool-rs
-
-      - name: Package CLI (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path target/${{ matrix.target }}/release/exiftool-rs.exe -DestinationPath exiftool-rs-cli-${{ matrix.label }}.zip
-
-      - name: Upload CLI artifact
+      # The program as it is, unsigned and in no archive: a release publishes
+      # it under its version and target (the release job below).
+      - name: Upload the CLI
         uses: actions/upload-artifact@v7
         with:
-          name: exiftool-rs-cli-${{ matrix.label }}
-          path: exiftool-rs-cli-${{ matrix.label }}.*
+          name: exiftool-rs-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/exiftool-rs${{ runner.os == 'Windows' && '.exe' || '' }}
+          if-no-files-found: error
+          # What a tag releases from its own run; kept no longer, as it
+          # counts against the account's storage.
+          retention-days: 14
 
   # The judges, ahead of any signing: the port against the pinned Perl
   # ExifTool (EXIFTOOL_VERSION, NOT the latest — an upstream tag running
@@ -361,6 +355,10 @@ jobs:
             exit 1
           fi
 
+  # A release is one file per platform, exiftool-rs-<version>-<target>[.exe],
+  # the licences of what's built into them, exiftool-rs-<version>-NOTICES.txt,
+  # and the sha256 of each, exiftool-rs-<version>-SHA256SUMS.txt: bare files
+  # a program that runs exiftool-rs can download and check as they are.
   release:
     needs: [build, parity]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -369,15 +367,49 @@ jobs:
       contents: write
 
     steps:
-      - name: Download all artifacts
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4  # stable
+        with:
+          toolchain: stable
+
+      # The crates' sources, whose licence files go in the notices
+      - name: Fetch the crates
+        run: cargo fetch --locked
+
+      - name: Download the builds
         uses: actions/download-artifact@v8
         with:
+          pattern: exiftool-rs-*
           path: ${{ runner.temp }}/artifacts
 
-      - name: Create release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
-        with:
-          generate_release_notes: true
-          # Pre-release tags (v*-rc/-beta) are marked "pre-release" in the GitHub UI.
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: ${{ runner.temp }}/artifacts/**/*
+      # gh uploads the files to a draft and publishes it after, as an
+      # immutable release has to be made.
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=${TAG#v}
+          out=$RUNNER_TEMP/release
+          mkdir -p "$out"
+          for dir in "$RUNNER_TEMP"/artifacts/exiftool-rs-*; do
+            target=${dir##*/exiftool-rs-}
+            for program in "$dir"/exiftool-rs*; do
+              case $program in
+                *.exe) cp "$program" "$out/exiftool-rs-$version-$target.exe" ;;
+                *) cp "$program" "$out/exiftool-rs-$version-$target" ;;
+              esac
+            done
+          done
+          bash scripts/notices.sh > "$out/exiftool-rs-$version-NOTICES.txt"
+          cd "$out"
+          sha256sum exiftool-rs-* > "exiftool-rs-$version-SHA256SUMS.txt"
+          cat "exiftool-rs-$version-SHA256SUMS.txt"
+          # Pre-release tags (v*-rc/-beta) are marked "pre-release".
+          prerelease=()
+          [[ $TAG == *-* ]] && prerelease=(--prerelease)
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "exiftool-rs $version" --generate-notes "${prerelease[@]}" \
+            exiftool-rs-*

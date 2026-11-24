@@ -96,7 +96,7 @@ dependencies = [
 
 [[package]]
 name = "exiftool-rs"
-version = "13.61.1"
+version = "13.61.2"
 dependencies = [
  "bzip2",
  "flate2",

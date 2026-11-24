@@ -12,7 +12,7 @@ both tools and verified by re-reading the outputs, summarised per format and
 detailed per file and case.
 
     parity --dump | python3 scripts/parity_report.py \
-        --rs 13.61.1 --exiftool 13.61 > reports/parity/index.html
+        --rs 13.61.2--exiftool 13.61 > reports/parity/index.html
 """
 import argparse
 import html

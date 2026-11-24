@@ -145,6 +145,31 @@ jobs:
       - name: Build GUI (with icon on Windows)
         run: cargo build --release --target ${{ matrix.target }} --bin exiftool-rs-gui --features gui${{ runner.os == 'Windows' && ',win-icon' || '' }}
 
+      - name: Verify Windows executable versions
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $crateVersion = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
+          $parts = $crateVersion.Split('.')
+          $productVersion = "$($parts[0]).$($parts[1])"
+          foreach ($name in 'exiftool-rs.exe', 'exiftool-rs-gui.exe') {
+            $info = (Get-Item "target/${{ matrix.target }}/release/$name").VersionInfo
+            if ($info.FileVersion -ne $crateVersion) {
+              throw "$name FileVersion is '$($info.FileVersion)', expected '$crateVersion'"
+            }
+            if ($info.ProductVersion -ne $productVersion) {
+              throw "$name ProductVersion is '$($info.ProductVersion)', expected '$productVersion'"
+            }
+            $fileNumber = "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)"
+            if ($fileNumber -ne ($parts[0..2] -join '.')) {
+              throw "$name numeric file version is '$fileNumber', expected '$($parts[0..2] -join '.')'"
+            }
+            $productNumber = "$($info.ProductMajorPart).$($info.ProductMinorPart)"
+            if ($productNumber -ne $productVersion) {
+              throw "$name numeric product version is '$productNumber', expected '$productVersion'"
+            }
+          }
+
       # The source tree of the ExifTool release the port follows, for the
       # tests that run ExifTool's own scripts, parse its sources or read a
       # written file back with it (tests/common/mod.rs: skipped without it).

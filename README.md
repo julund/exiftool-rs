@@ -21,7 +21,16 @@ compatible throughout an ExifTool major series.
 
 Use `exiftool-rs = "13.61"` to accept compatible 13.x updates. Programs that
 need the exact metadata behaviour of one port release should pin it, for
-example `exiftool-rs = "=13.61.0"`.
+example `exiftool-rs = "=13.61.1"`.
+
+## Releasing
+
+Releases are version-tag driven. After updating `Cargo.toml`, `Cargo.lock` and
+the changelog on `main`, create and push an annotated `v<crate-version>` tag,
+for example `git tag -a v13.61.1 -m "exiftool-rs 13.61.1"` followed by
+`git push origin main v13.61.1`. CI requires the tag to match the crate version,
+builds and signs the artifacts, and creates the corresponding GitHub Release.
+Final (non-prerelease) tags are then published to crates.io.
 
 ## Community & support
 

@@ -9,11 +9,33 @@ fn main() {
     // feature, so that a program using the library does not get it.
     #[cfg(all(target_os = "windows", feature = "win-icon"))]
     {
+        use winres::VersionInfo;
+
+        let major = cargo_version_word("CARGO_PKG_VERSION_MAJOR");
+        let minor = cargo_version_word("CARGO_PKG_VERSION_MINOR");
+        let patch = cargo_version_word("CARGO_PKG_VERSION_PATCH");
+        let file_version = std::env::var("CARGO_PKG_VERSION").expect("Cargo did not provide the package version");
+        // The package's third component is this port's revision.  The product
+        // is the upstream ExifTool release, represented by the first two.
+        let product_version = format!("{major}.{minor}");
+        let file_version_number = major << 48 | minor << 32 | patch << 16;
+        let product_version_number = major << 48 | minor << 32;
+
         let mut res = winres::WindowsResource::new();
-        res.set_icon("assets/icon.ico");
+        res.set_icon("assets/icon.ico")
+            .set("FileVersion", &file_version)
+            .set("ProductVersion", &product_version)
+            .set_version_info(VersionInfo::FILEVERSION, file_version_number)
+            .set_version_info(VersionInfo::PRODUCTVERSION, product_version_number);
         res.compile().expect("Failed to compile Windows resources");
     }
     build_info();
+}
+
+#[cfg(all(target_os = "windows", feature = "win-icon"))]
+fn cargo_version_word(name: &str) -> u64 {
+    let value = std::env::var(name).unwrap_or_else(|_| panic!("Cargo did not provide {name}"));
+    value.parse::<u16>().unwrap_or_else(|_| panic!("{name}={value:?} is not a Windows version word")) as u64
 }
 
 /// What `exiftool-rs -ver -v` says it was built with (src/build_info.rs):

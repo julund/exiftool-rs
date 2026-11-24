@@ -2,6 +2,19 @@
 
 All notable changes to `exiftool-rs` are documented here.
 
+## [13.61.1] - 2026-11-24
+
+### Fixed
+
+- Windows CLI and GUI executables now carry file version `13.61.1` and product
+  version `13.61`, matching the exiftool-rs release and the mirrored ExifTool
+  release respectively.
+
+### Changed
+
+- Documented the version-tag release flow; pushing a matching `v13.61.1` tag
+  runs the release gates and creates a GitHub Release with the built artifacts.
+
 ## [13.61.0] - 2026-11-13
 
 The first release under mirrored versioning: the first two components are the
